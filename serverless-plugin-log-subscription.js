@@ -42,14 +42,14 @@ module.exports = class LogSubscriptionsPlugin {
     }
   }
 
-  getConfig(global, fn) {
+  getConfig(common, fn) {
     const defaults = {
       enabled: false,
       logGroupName: `/aws/lambda/${fn.name}`,
       filterPattern: ''
     };
 
-    const config = Object.assign(defaults, global);
+    const config = Object.assign(defaults, common);
 
     if (fn.logSubscription === undefined) {
       return config;
