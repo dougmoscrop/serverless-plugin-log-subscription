@@ -43,7 +43,7 @@ test('adds subscriptions for enabled functions', t => {
 
   const plugin = new Plugin(serverless);
 
-  const mock = sinon.stub(plugin, 'getConfig')
+  sinon.stub(plugin, 'getConfig')
     .onCall(0).returns({ enabled: true })
     .onCall(1).returns({ enabled: true })
     .onCall(2).returns({ enabled: false })
@@ -81,7 +81,7 @@ test('configures the subscription filter correctly', t => {
 
   const plugin = new Plugin(serverless);
 
-  const mock = sinon.stub(plugin, 'getConfig').returns({
+  sinon.stub(plugin, 'getConfig').returns({
       enabled: true,
       destinationArn: 'blah-blah-blah',
       filterPattern: '{ $.level = 42 }',
