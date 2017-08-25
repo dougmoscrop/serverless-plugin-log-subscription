@@ -35,7 +35,7 @@ test('enabled by function (object)', t => {
 
   const plugin = new Plugin(serverless);
 
-  const config = plugin.getConfig(null, { logSubscription: {} });
+  const config = plugin.getConfig(null, { logSubscription: { enabled: true } });
 
   t.true(config.enabled);
 });
