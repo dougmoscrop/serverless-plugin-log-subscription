@@ -55,14 +55,12 @@ module.exports = class LogSubscriptionsPlugin {
       return config;
     }
 
-    const functionConfig = { enabled : true };
+    const functionConfig = {};
 
-    if (fn.logSubscription) {
-      if (typeof fn.logSubscription === 'object') {
-        Object.assign(functionConfig, fn.logSubscription);
-      }
+    if (typeof fn.logSubscription === 'object') {
+      Object.assign(functionConfig, fn.logSubscription);
     } else {
-      functionConfig.enabled = false;
+      functionConfig.enabled =  !!fn.logSubscription;
     }
 
     return Object.assign(config, functionConfig);
