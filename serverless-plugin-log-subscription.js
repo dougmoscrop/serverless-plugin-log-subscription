@@ -27,7 +27,7 @@ module.exports = class LogSubscriptionsPlugin {
         const config = this.getConfig(custom.logSubscription, fn);
 
         if (config.enabled) {
-          const key = `${aws.naming.normalizeName(functionName)}SubscriptionFilter`;
+          const key = `${aws.naming.getNormalizedFunctionName(functionName)}SubscriptionFilter`;
 
           template.Resources[key] = {
             Type: "AWS::Logs::SubscriptionFilter",

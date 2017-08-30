@@ -18,13 +18,13 @@ test('does nothing when there are no functions', t => {
 });
 
 test('adds subscriptions for enabled functions', t => {
-  const normalizeName = sinon.stub()
+  const getNormalizedFunctionName = sinon.stub()
     .onCall(0).returns('A')
     .onCall(1).returns('B');
 
   const provider = {
     naming: {
-      normalizeName
+      getNormalizedFunctionName
     }
   };
   const serverless = {
@@ -58,11 +58,11 @@ test('adds subscriptions for enabled functions', t => {
 });
 
 test('configures the subscription filter correctly', t => {
-  const normalizeName = sinon.stub().returns('A');
+  const getNormalizedFunctionName = sinon.stub().returns('A');
 
   const provider = {
     naming: {
-      normalizeName
+      getNormalizedFunctionName
     }
   };
   const serverless = {
