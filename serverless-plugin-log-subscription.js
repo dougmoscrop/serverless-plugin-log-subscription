@@ -38,7 +38,7 @@ module.exports = class LogSubscriptionsPlugin {
             }
           };
           if(config.roleArn !== undefined) {
-            template.Resources[key][Properties][RoleArn] = config.roleArn;
+            template.Resources[key].Properties.RoleArn = config.roleArn;
           }
         }
       });
