@@ -12,6 +12,8 @@ Configuration happens both 'globally' (via custom.logSubscription) and also at t
 
 `destinationArn` (required) - the arn of the CloudWatch Destination (you create this resource yourself)
 
+`roleArn` (optional) - the arn of the IAM role granting logs permission to put to Destination (you create this resource yourself)
+
 `filterPattern` (optional) if specified, it will only forward logs matching this pattern. You can do simple token matching, or JSON matching (e.g. `{ $.level >= 30 }` to match a bunyan level)
 
 ### Examples
@@ -22,6 +24,7 @@ The most basic:
 custom:
   logSubscription:
     destinationArn: 'some-arn'
+    roleArn: 'some-arn'
 
 functions:
   myFunction:
@@ -48,6 +51,7 @@ custom:
   logSubscription:
     enabled: true
     destinationArn: 'some-arn'
+    roleArn: 'some-arn'
 
 functions:
   myFunction:
