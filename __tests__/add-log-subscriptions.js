@@ -98,3 +98,47 @@ test('configures the subscription filter correctly', t => {
     LogGroupName: '/aws/lambda/a'
   });
 });
+
+test('configures the subscription filter with RoleArn correctly', t => {
+  const getNormalizedFunctionName = sinon.stub().returns('A');
+
+  const provider = {
+    naming: {
+      getNormalizedFunctionName
+    }
+  };
+  const serverless = {
+    getProvider: sinon.stub().withArgs('aws').returns(provider),
+    service: {
+      provider: {
+        compiledCloudFormationTemplate: {}
+      },
+      functions: {
+        A: {
+          name: 'a'
+        }
+      }
+    }
+  };
+
+  const plugin = new Plugin(serverless);
+
+  sinon.stub(plugin, 'getConfig').returns({
+      enabled: true,
+      destinationArn: 'blah-blah-blah',
+      filterPattern: '{ $.level = 42 }',
+      logGroupName: '/aws/lambda/a',
+      roleArn: 'arn:foo:bar:baz'
+    });
+
+  plugin.addLogSubscriptions();
+
+  const resources = serverless.service.provider.compiledCloudFormationTemplate.Resources;
+
+  t.deepEqual(resources.ASubscriptionFilter.Properties, {
+    DestinationArn: 'blah-blah-blah',
+    FilterPattern: '{ $.level = 42 }',
+    LogGroupName: '/aws/lambda/a',
+    RoleArn: 'arn:foo:bar:baz'
+  });
+});
