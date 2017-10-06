@@ -27,29 +27,54 @@ module.exports = class LogSubscriptionsPlugin {
         const config = this.getConfig(custom.logSubscription, fn);
 
         if (config.enabled) {
-          const key = `${aws.naming.getNormalizedFunctionName(functionName)}SubscriptionFilter`;
+          const normalizedFunctionName = aws.naming.getNormalizedFunctionName(functionName);
 
-          template.Resources[key] = {
+          const logGroupLogicalId = `${normalizedFunctionName}LogGroup`;
+          const logGroupName = this.getLogGroupName(template, logGroupLogicalId);
+
+          const logicalId = `${normalizedFunctionName}SubscriptionFilter`;
+
+          const resource = {
             Type: "AWS::Logs::SubscriptionFilter",
             Properties: {
               DestinationArn: config.destinationArn,
               FilterPattern: config.filterPattern,
-              LogGroupName: config.logGroupName
-            }
+              LogGroupName: logGroupName
+            },
+            DependsOn: logGroupLogicalId
           };
 
           if (config.roleArn !== undefined) {
-            template.Resources[key].Properties.RoleArn = config.roleArn;
+            resource.Properties.RoleArn = config.roleArn;
           }
+
+          template.Resources[logicalId] = resource;
         }
       });
     }
   }
 
+  getLogGroupName(template, logGroupLogicalId) {
+    const logGroupResource = template.Resources[logGroupLogicalId];
+
+    if (logGroupResource) {
+      if (logGroupResource.Type === 'AWS::Logs::LogGroup') {
+        if (logGroupResource.Properties && logGroupResource.Properties.LogGroupName) {
+          return logGroupResource.Properties.LogGroupName;
+        }
+
+        throw new Error(`${logGroupLogicalId} did not have Properties.LogGroupName`);
+      }
+
+      throw new Error(`Expected ${logGroupLogicalId} to have a Type of AWS::Logs::LogGroup but got ${logGroupResource.Type}`);
+    }
+
+    throw new Error(`Could not find log group resource ${logGroupLogicalId}`);
+  }
+
   getConfig(common, fn) {
     const defaults = {
       enabled: false,
-      logGroupName: `/aws/lambda/${fn.name}`,
       filterPattern: ''
     };
 

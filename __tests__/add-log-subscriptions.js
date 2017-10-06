@@ -46,7 +46,11 @@ test('adds subscriptions for enabled functions', t => {
   sinon.stub(plugin, 'getConfig')
     .onCall(0).returns({ enabled: true })
     .onCall(1).returns({ enabled: true })
-    .onCall(2).returns({ enabled: false })
+    .onCall(2).returns({ enabled: false });
+
+  sinon.stub(plugin, 'getLogGroupName')
+    .onCall(0).returns('LogGroupA')
+    .onCall(1).returns('LogGroupB');
 
   plugin.addLogSubscriptions();
 
@@ -84,9 +88,10 @@ test('configures the subscription filter correctly', t => {
   sinon.stub(plugin, 'getConfig').returns({
       enabled: true,
       destinationArn: 'blah-blah-blah',
-      filterPattern: '{ $.level = 42 }',
-      logGroupName: '/aws/lambda/a'
+      filterPattern: '{ $.level = 42 }'
     });
+
+  sinon.stub(plugin, 'getLogGroupName').returns('/aws/lambda/a');
 
   plugin.addLogSubscriptions();
 
@@ -127,9 +132,10 @@ test('configures the subscription filter with RoleArn correctly', t => {
       enabled: true,
       destinationArn: 'blah-blah-blah',
       filterPattern: '{ $.level = 42 }',
-      logGroupName: '/aws/lambda/a',
       roleArn: 'arn:foo:bar:baz'
     });
+
+  sinon.stub(plugin, 'getLogGroupName').returns('/aws/lambda/a');
 
   plugin.addLogSubscriptions();
 

@@ -25,7 +25,7 @@ test('enabled by function (true)', t => {
 
   const config = plugin.getConfig(null, { name: 'a', logSubscription: true });
 
-  t.deepEqual(config, { enabled: true, filterPattern: '', logGroupName: '/aws/lambda/a' });
+  t.deepEqual(config, { enabled: true, filterPattern: '' });
 });
 
 test('enabled by function (object)', t => {
