@@ -1,5 +1,7 @@
 'use strict';
 
+const cloneDeep = require('lodash.clonedeep');
+
 module.exports = class LogSubscriptionsPlugin {
 
   constructor(serverless) {
@@ -23,7 +25,6 @@ module.exports = class LogSubscriptionsPlugin {
 
       template.Resources = template.Resources || {};
 
-
       Object.keys(functions).forEach(functionName => {
         const fn = functions[functionName];
         const config = this.getConfig(logSubscription, fn);
@@ -39,15 +40,15 @@ module.exports = class LogSubscriptionsPlugin {
           const resource = {
             Type: "AWS::Logs::SubscriptionFilter",
             Properties: {
-              DestinationArn: config.destinationArn,
-              FilterPattern: config.filterPattern,
+              DestinationArn: cloneDeep(config.destinationArn),
+              FilterPattern: cloneDeep(config.filterPattern),
               LogGroupName: logGroupName
             },
             DependsOn: [logGroupLogicalId].concat(dependsOn || [])
           };
 
           if (config.roleArn !== undefined) {
-            resource.Properties.RoleArn = config.roleArn;
+            resource.Properties.RoleArn = cloneDeep(config.roleArn);
           }
 
           template.Resources[logicalId] = resource;

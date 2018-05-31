@@ -30,5 +30,8 @@
     "eslint": "^4.4.1",
     "nyc": "^11.1.0",
     "sinon": "^3.2.0"
+  },
+  "dependencies": {
+    "lodash.clonedeep": "^4.5.0"
   }
 }
