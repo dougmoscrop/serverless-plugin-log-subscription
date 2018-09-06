@@ -45,6 +45,27 @@ module.exports = class LogSubscriptionsPlugin {
             },
             DependsOn: [logGroupLogicalId].concat(dependsOn || [])
           };
+          if (config.addSourceLambdaPermission) {
+            const permissionLogicalId = `${normalizedFunctionName}LogLambdaPermission`;
+            const region = service.provider.region;
+            const accountId = service.provider.accountId
+            const principal = `logs.${region}.amazonaws.com`;
+            const permissionResource = {
+              Type: "AWS::Lambda::Permission",
+              Properties: {
+                Action: "lambda:InvokeFunction",
+                FunctionName: config.destinationArn,
+                Principal: principal,
+                SourceArn: {
+                  "Fn::GetAtt": [
+                    logGroupLogicalId,
+                    "Arn"
+                  ]
+                }
+              }
+            };
+            template.Resources[permissionLogicalId] = permissionResource;
+          }
 
           if (config.roleArn !== undefined) {
             resource.Properties.RoleArn = config.roleArn;
@@ -54,6 +75,24 @@ module.exports = class LogSubscriptionsPlugin {
         }
       });
     }
+  }
+
+  getLogGroupArn(template, logGroupLogicalId) {
+    const logGroupResource = template.Resources[logGroupLogicalId];
+
+    if (logGroupResource) {
+      if (logGroupResource.Type === 'AWS::Logs::LogGroup') {
+        if (logGroupResource.Properties && logGroupResource.Properties.LogGroupArn) {
+          return logGroupResource.Properties.LogGroupArn;
+        }
+
+        throw new Error(`${logGroupLogicalId} did not have Properties.LogGroupArn`);
+      }
+
+      throw new Error(`Expected ${logGroupLogicalId} to have a Type of AWS::Logs::LogGroup but got ${logGroupResource.Type}`);
+    }
+
+    throw new Error(`Could not find log group resource ${logGroupLogicalId}`);
   }
 
   getLogGroupName(template, logGroupLogicalId) {
@@ -77,7 +116,8 @@ module.exports = class LogSubscriptionsPlugin {
   getConfig(common, fn) {
     const defaults = {
       enabled: false,
-      filterPattern: ''
+      filterPattern: '',
+      addSourceLambdaPermission: false
     };
 
     const config = Object.assign(defaults, common);
