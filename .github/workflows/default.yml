@@ -16,6 +16,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - if: (matrix.os == 'ubuntu-latest') && (matrix.node_version == '10')
+        run: npx relcov < coverage/lcov.info > coverage/relcov.info
+      - if: (matrix.os == 'ubuntu-latest') && (matrix.node_version == '10')
         uses: sonarsource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
