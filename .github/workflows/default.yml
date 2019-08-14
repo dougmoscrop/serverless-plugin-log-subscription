@@ -15,7 +15,7 @@ jobs:
           version: ${{ matrix.node_version }}
       - run: npm ci
       - run: npm test
-      - if: (matrix.os == ubuntu-latest) && (matrix.node_version == 10)
+      - if: (matrix.os == 'ubuntu-latest') && (matrix.node_version == '10')
         uses: sonarsource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
