@@ -1,4 +1,5 @@
 __tests__
+.github
 .nyc_output
 coverage
 *.log
