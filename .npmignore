@@ -3,5 +3,7 @@ __tests__/
 .nyc_output/
 coverage/
 *.log
-.sonarcloud.properties
+sonar-project.properties
 .nycrc.yml
+.eslintrc
+.gitignore
