@@ -77,24 +77,6 @@ module.exports = class LogSubscriptionsPlugin {
     }
   }
 
-  getLogGroupArn(template, logGroupLogicalId) {
-    const logGroupResource = template.Resources[logGroupLogicalId];
-
-    if (logGroupResource) {
-      if (logGroupResource.Type === 'AWS::Logs::LogGroup') {
-        if (logGroupResource.Properties && logGroupResource.Properties.LogGroupArn) {
-          return logGroupResource.Properties.LogGroupArn;
-        }
-
-        throw new Error(`${logGroupLogicalId} did not have Properties.LogGroupArn`);
-      }
-
-      throw new Error(`Expected ${logGroupLogicalId} to have a Type of AWS::Logs::LogGroup but got ${logGroupResource.Type}`);
-    }
-
-    throw new Error(`Could not find log group resource ${logGroupLogicalId}`);
-  }
-
   getLogGroupName(template, logGroupLogicalId) {
     const logGroupResource = template.Resources[logGroupLogicalId];
 
