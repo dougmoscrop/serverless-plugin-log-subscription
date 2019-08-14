@@ -5,5 +5,5 @@ coverage/
 *.log
 sonar-project.properties
 .nycrc.yml
-.eslintrc
-.gitignore
+.eslintrc.yml
+.gitignore/
