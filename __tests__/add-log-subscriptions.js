@@ -234,5 +234,5 @@ test('configures the subscription filter with DependsOn the lambda function', t 
 
   const resources = serverless.service.provider.compiledCloudFormationTemplate.Resources;
 
-  t.deepEqual(resources.ASubscriptionFilter.DependsOn, ['ALogGroup', 'BLambdaFunction']);
+  t.deepEqual(resources.ASubscriptionFilter.DependsOn, ['BLambdaFunction', 'ALogGroup']);
 });
