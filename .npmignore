@@ -1,6 +1,7 @@
-__tests__
-.github
-.nyc_output
-coverage
+__tests__/
+.github/
+.nyc_output/
+coverage/
 *.log
 .sonarcloud.properties
+.nycrc.yml
