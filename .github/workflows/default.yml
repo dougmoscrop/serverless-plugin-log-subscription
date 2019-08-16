@@ -22,6 +22,7 @@ jobs:
         with:
           version: ${{ matrix.node_version }}
       - run: npm i -g npm@6
+      - run: npm version
       - run: npm ci
       - run: npm test
       - if: (matrix.os == 'ubuntu-latest') && (matrix.node_version == '10')
