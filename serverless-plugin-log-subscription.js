@@ -18,70 +18,79 @@ module.exports = class LogSubscriptionsPlugin {
       const custom = service.custom || {};
       const logSubscription = custom.logSubscription || {};
 
-      const aws = this.serverless.getProvider('aws');
-      const template = service.provider.compiledCloudFormationTemplate;
+      if (!Array.isArray(logSubscription)) {
+        this.addLogSubscription(service, functions, logSubscription, "");
+      } else {
+        for (const index in logSubscription) {
+          this.addLogSubscription(service, functions, logSubscription[index], index);
+        }
+      }
+    }
+  }
 
-      template.Resources = template.Resources || {};
+  addLogSubscription(service, functions, logSubscription, index) {
+    const aws = this.serverless.getProvider('aws');
+    const template = service.provider.compiledCloudFormationTemplate;
 
+    template.Resources = template.Resources || {};
 
-      Object.keys(functions).forEach(functionName => {
-        const fn = functions[functionName];
-        const config = this.getConfig(logSubscription, fn);
-        const dependsOn = this.getDependsOn(config);
-        const dependencies = [].concat(dependsOn || []);
+    Object.keys(functions).forEach(functionName => {
+      const fn = functions[functionName];
+      const config = this.getConfig(logSubscription, fn);
+      const dependsOn = this.getDependsOn(config);
+      const dependencies = [].concat(dependsOn || []);
 
-        if (config.enabled) {
-          const normalizedFunctionName = aws.naming.getNormalizedFunctionName(functionName);
+      if (config.enabled) {
+        const normalizedFunctionName = aws.naming.getNormalizedFunctionName(functionName);
 
-          const logicalId = `${normalizedFunctionName}SubscriptionFilter`;
-          const logGroupLogicalId = `${normalizedFunctionName}LogGroup`;
-          const logGroupName = this.getLogGroupName(template, logGroupLogicalId);
+        const logicalId = `${normalizedFunctionName}SubscriptionFilter${index}`;
+        const logGroupLogicalId = `${normalizedFunctionName}LogGroup`;
+        const logGroupName = this.getLogGroupName(template, logGroupLogicalId);
 
-          if (config.addSourceLambdaPermission) {
-            const permissionLogicalId = `${normalizedFunctionName}LogLambdaPermission`;
-            const region = service.provider.region;
-            const principal = `logs.${region}.amazonaws.com`;
+        if (config.addSourceLambdaPermission) {
+          const permissionLogicalId = `${normalizedFunctionName}LogLambdaPermission`;
+          const region = service.provider.region;
+          const principal = `logs.${region}.amazonaws.com`;
 
-            dependencies.push(permissionLogicalId)
+          dependencies.push(permissionLogicalId)
 
-            const lambdaPermission = {
-              Type: 'AWS::Lambda::Permission',
-              Properties: {
-                Action: 'lambda:InvokeFunction',
-                FunctionName: config.destinationArn,
-                Principal: principal,
-                SourceArn: {
-                  'Fn::GetAtt': [
-                    logGroupLogicalId,
-                    'Arn'
-                  ]
-                }
-              }
-            };
-
-            template.Resources[permissionLogicalId] = lambdaPermission;
-          }
-
-          dependencies.push(logGroupLogicalId);
-
-          const subscriptionFilter = {
-            Type: 'AWS::Logs::SubscriptionFilter',
+          const lambdaPermission = {
+            Type: 'AWS::Lambda::Permission',
             Properties: {
-              DestinationArn: config.destinationArn,
-              FilterPattern: config.filterPattern,
-              LogGroupName: logGroupName
-            },
-            DependsOn: dependencies,
+              Action: 'lambda:InvokeFunction',
+              FunctionName: config.destinationArn,
+              Principal: principal,
+              SourceArn: {
+                'Fn::GetAtt': [
+                  logGroupLogicalId,
+                  'Arn'
+                ]
+              }
+            }
           };
 
-          if (config.roleArn !== undefined) {
-            subscriptionFilter.Properties.RoleArn = config.roleArn;
-          }
-
-          template.Resources[logicalId] = subscriptionFilter;
+          template.Resources[permissionLogicalId] = lambdaPermission;
         }
-      });
-    }
+
+        dependencies.push(logGroupLogicalId);
+
+        const subscriptionFilter = {
+          Type: 'AWS::Logs::SubscriptionFilter',
+          Properties: {
+            DestinationArn: config.destinationArn,
+            FilterPattern: config.filterPattern,
+            LogGroupName: logGroupName
+          },
+          DependsOn: dependencies,
+        };
+
+        if (config.roleArn !== undefined) {
+          subscriptionFilter.Properties.RoleArn = config.roleArn;
+        }
+
+        template.Resources[logicalId] = subscriptionFilter;
+      }
+    });
   }
 
   getLogGroupName(template, logGroupLogicalId) {
