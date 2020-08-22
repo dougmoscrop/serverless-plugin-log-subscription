@@ -72,3 +72,25 @@ functions:
   myOtherFunction:
     logSubscription: false
 ```
+
+Several subscription filters for one log group / the same log group:
+
+Note: Please make sure your AWS account is allowed to use this feature!   
+By default, AWS allows to use 1 subscription filter per log group and this quota can't be changed.   
+But, there is an opportunity to ask AWS Support to help you with using several subscription filters for 
+one log group.
+
+```yml
+custom:
+  logSubscription:
+    - enabled: true
+      destinationArn: 'some-arn-1'
+      roleArn: 'some-arn'
+    - enabled: true
+      destinationArn: 'some-arn-2'
+      roleArn: 'some-arn'
+
+functions:
+  myFunction:
+    ...
+```
