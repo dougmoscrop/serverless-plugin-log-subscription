@@ -26,9 +26,9 @@
   },
   "homepage": "https://github.com/dougmoscrop/serverless-plugin-log-subscription#readme",
   "devDependencies": {
-    "ava": "^1.4.1",
-    "eslint": "^6.1.0",
-    "nyc": "^14.1.1",
-    "sinon": "^7.4.1"
+    "ava": "^3.11.1",
+    "eslint": "^7.7.0",
+    "nyc": "^15.1.0",
+    "sinon": "^9.0.3"
   }
 }
