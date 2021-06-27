@@ -25,7 +25,7 @@ test('enabled by function (true)', t => {
 
   const config = plugin.getConfig(null, { name: 'a', logSubscription: true });
 
-  t.deepEqual(config, { enabled: true, filterPattern: '', addSourceLambdaPermission: false });
+  t.deepEqual(config, { enabled: true, filterPattern: '', addLambdaPermission: true });
 });
 
 test('enabled by function (object)', t => {

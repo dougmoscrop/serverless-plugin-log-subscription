@@ -2,7 +2,15 @@
 
 This plugin adds an `AWS::Logs::LogSubscription` for each of your Lambda functions when enabled.
 
-Log subscriptions are used to deliver your CloudWatch Logs to a Kinesis stream for futher processing - such as indexing them in a Elasticsearch for 'centralized logging';
+Log subscriptions are used to deliver your CloudWatch Logs to a destination of some kind. This may be a CloudWatch Destination resource (which wraps a Kinesis stream) or a Lambda function.
+
+## Changes In 2.0
+
+As of 2.0, this plugin will automatically create the `AWS::Lambda::Permission` if your destinationArn is a reference to a Lambda function within your service.
+
+If you do not want permissions to be created automatically, you can set `addLambdaPermission: false`.
+
+The addSourceLambdaPermission option has been removed and will throw an error.
 
 ## Configuration
 
@@ -10,7 +18,7 @@ Configuration happens both 'globally' (via custom.logSubscription) and also at t
 
 `enabled` - whether or not log subscriptions are enabled. defaults to false globally, if set to true it will be on for all functions (unless they set to false)
 
-`destinationArn` (required) - the arn of the CloudWatch Destination (you create this resource yourself)
+`destinationArn` (required) - the arn of the CloudWatch Destination (you create this resource yourself) or an Fn::GetAtt reference to a local Lambda function for direct subscription
 
 `roleArn` (optional) - the arn of the IAM role granting logs permission to put to Destination (you create this resource yourself)
 
@@ -71,6 +79,24 @@ functions:
     ...
   myOtherFunction:
     logSubscription: false
+```
+
+Lambda function directly:
+
+```yml
+custom:
+  logSubscription:
+    enabled: true
+    destinationArn:
+      # Note that you have to use Serverless' naming convention here
+      Fn::GetAtt: ['LogsProcessorLambdaFunction', 'arn']
+    addLambdaPermission: true # this is the default, set to false to manage your own permissions
+
+functions:
+  api:
+    ...
+  logsProcessor:
+    logSubscription: false # Don't subscribe the log processors logs to the log processor..
 ```
 
 Several subscription filters for one log group / the same log group:

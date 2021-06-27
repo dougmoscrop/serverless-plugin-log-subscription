@@ -19,7 +19,7 @@ module.exports = class LogSubscriptionsPlugin {
       const logSubscription = custom.logSubscription || {};
 
       if (!Array.isArray(logSubscription)) {
-        this.addLogSubscription(service, functions, logSubscription, "");
+        this.addLogSubscription(service, functions, logSubscription);
       } else {
         for (const index in logSubscription) {
           this.addLogSubscription(service, functions, logSubscription[index], index);
@@ -28,7 +28,7 @@ module.exports = class LogSubscriptionsPlugin {
     }
   }
 
-  addLogSubscription(service, functions, logSubscription, index) {
+  addLogSubscription(service, functions, logSubscription, suffix = '') {
     const aws = this.serverless.getProvider('aws');
     const template = service.provider.compiledCloudFormationTemplate;
 
@@ -41,24 +41,30 @@ module.exports = class LogSubscriptionsPlugin {
       const dependencies = [].concat(dependsOn || []);
 
       if (config.enabled) {
+        if (config.addSourceLambdaPermission) {
+          throw new Error('addSourceLambdaPermission is no longer supported, see README');
+        }
+
         const normalizedFunctionName = aws.naming.getNormalizedFunctionName(functionName);
 
-        const logicalId = `${normalizedFunctionName}SubscriptionFilter${index}`;
+        const logicalId = `${normalizedFunctionName}SubscriptionFilter${suffix}`;
         const logGroupLogicalId = `${normalizedFunctionName}LogGroup`;
         const logGroupName = this.getLogGroupName(template, logGroupLogicalId);
 
-        if (config.addSourceLambdaPermission) {
+        if (config.addLambdaPermission && this.isLambdaFunction(dependsOn, template)) {
           const permissionLogicalId = `${normalizedFunctionName}LogLambdaPermission`;
           const region = service.provider.region;
           const principal = `logs.${region}.amazonaws.com`;
 
-          dependencies.push(permissionLogicalId)
+          dependencies.push(permissionLogicalId);
 
           const lambdaPermission = {
             Type: 'AWS::Lambda::Permission',
             Properties: {
               Action: 'lambda:InvokeFunction',
-              FunctionName: config.destinationArn,
+              FunctionName: {
+                Ref: dependsOn,
+              },
               Principal: principal,
               SourceArn: {
                 'Fn::GetAtt': [
@@ -66,7 +72,7 @@ module.exports = class LogSubscriptionsPlugin {
                   'Arn'
                 ]
               }
-            }
+            },
           };
 
           template.Resources[permissionLogicalId] = lambdaPermission;
@@ -115,7 +121,7 @@ module.exports = class LogSubscriptionsPlugin {
     const defaults = {
       enabled: false,
       filterPattern: '',
-      addSourceLambdaPermission: false
+      addLambdaPermission: true
     };
 
     const config = Object.assign(defaults, common);
@@ -143,6 +149,10 @@ module.exports = class LogSubscriptionsPlugin {
         return config.destinationArn.Ref;
       }
     }
+  }
+
+  isLambdaFunction(dependsOn, template) {
+    return template.Resources[dependsOn].Type === 'AWS::Lambda::Function';
   }
 
 };
