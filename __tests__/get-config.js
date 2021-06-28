@@ -6,7 +6,10 @@ const Plugin = require('..');
 
 test('defaults to disabled', t => {
   const serverless = {
-    service: {}
+    service: {},
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
   };
 
   const plugin = new Plugin(serverless);
@@ -18,7 +21,10 @@ test('defaults to disabled', t => {
 
 test('enabled by function (true)', t => {
   const serverless = {
-    service: {}
+    service: {},
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
   };
 
   const plugin = new Plugin(serverless);
@@ -30,7 +36,10 @@ test('enabled by function (true)', t => {
 
 test('enabled by function (object)', t => {
   const serverless = {
-    service: {}
+    service: {},
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
   };
 
   const plugin = new Plugin(serverless);
@@ -42,7 +51,10 @@ test('enabled by function (object)', t => {
 
 test('disabled by function (false)', t => {
   const serverless = {
-    service: {}
+    service: {},
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
   };
 
   const plugin = new Plugin(serverless);
@@ -54,7 +66,10 @@ test('disabled by function (false)', t => {
 
 test('disabled by function (object)', t => {
   const serverless = {
-    service: {}
+    service: {},
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
   };
 
   const plugin = new Plugin(serverless);
@@ -66,7 +81,10 @@ test('disabled by function (object)', t => {
 
 test('enabled (globally)', t => {
   const serverless = {
-    service: {}
+    service: {},
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
   };
 
   const plugin = new Plugin(serverless);
@@ -78,7 +96,10 @@ test('enabled (globally)', t => {
 
 test('disabled (function overrides globally)', t => {
   const serverless = {
-    service: {}
+    service: {},
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
   };
 
   const plugin = new Plugin(serverless);
@@ -90,7 +111,10 @@ test('disabled (function overrides globally)', t => {
 
 test('global config', t => {
   const serverless = {
-    service: {}
+    service: {},
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
   };
 
   const plugin = new Plugin(serverless);
@@ -103,7 +127,10 @@ test('global config', t => {
 
 test('function override', t => {
   const serverless = {
-    service: {}
+    service: {},
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
   };
 
   const plugin = new Plugin(serverless);

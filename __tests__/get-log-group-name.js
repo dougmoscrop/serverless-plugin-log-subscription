@@ -6,7 +6,10 @@ const Plugin = require('..');
 
 test('throws when resource is missing', t => {
   const serverless = {
-    service: {}
+    service: {},
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
   };
 
   const plugin = new Plugin(serverless);
@@ -18,7 +21,10 @@ test('throws when resource is missing', t => {
 
 test('throws when resource is wrong type', t => {
   const serverless = {
-    service: {}
+    service: {},
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
   };
 
   const plugin = new Plugin(serverless);
@@ -36,7 +42,10 @@ test('throws when resource is wrong type', t => {
 
 test('throws when resource is missing Properties', t => {
   const serverless = {
-    service: {}
+    service: {},
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
   };
 
   const plugin = new Plugin(serverless);
@@ -55,7 +64,10 @@ test('throws when resource is missing Properties', t => {
 
 test('throws when resource is missing Properties.LogGroupName', t => {
   const serverless = {
-    service: {}
+    service: {},
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
   };
 
   const plugin = new Plugin(serverless);
@@ -73,7 +85,10 @@ test('throws when resource is missing Properties.LogGroupName', t => {
 
 test('returns LogGroupName', t => {
   const serverless = {
-    service: {}
+    service: {},
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
   };
 
   const plugin = new Plugin(serverless);

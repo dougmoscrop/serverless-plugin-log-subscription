@@ -7,6 +7,9 @@ const Plugin = require('..');
 
 test('does nothing when there are no functions', t => {
   const serverless = {
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
     service: {},
   };
 
@@ -28,6 +31,9 @@ test('adds subscriptions for enabled functions', t => {
     }
   };
   const serverless = {
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
     getProvider: sinon.stub().withArgs('aws').returns(provider),
     service: {
       provider: {
@@ -70,6 +76,9 @@ test('configures the subscription filter correctly', t => {
     }
   };
   const serverless = {
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
     getProvider: sinon.stub().withArgs('aws').returns(provider),
     service: {
       provider: {
@@ -113,6 +122,9 @@ test('configures the subscription filter with RoleArn correctly', t => {
     }
   };
   const serverless = {
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
     getProvider: sinon.stub().withArgs('aws').returns(provider),
     service: {
       provider: {
@@ -158,6 +170,9 @@ test('configures the subscription filter with DependsOn the log group', t => {
     }
   };
   const serverless = {
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
     getProvider: sinon.stub().withArgs('aws').returns(provider),
     service: {
       provider: {
@@ -198,6 +213,9 @@ test('configures the subscription filter with DependsOn the lambda function', t 
     }
   };
   const serverless = {
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
     getProvider: sinon.stub().withArgs('aws').returns(provider),
     service: {
       provider: {

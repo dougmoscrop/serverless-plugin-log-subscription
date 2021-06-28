@@ -6,13 +6,21 @@ const sinon = require('sinon');
 const Plugin = require('..');
 
 test('adds the right hooks', t => {
-  const plugin = new Plugin();
+  const plugin = new Plugin({
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
+  });
 
   t.true(typeof plugin.hooks['aws:package:finalize:mergeCustomProviderResources'] === 'function');
 });
 
 test('hook calls the method', t => {
-  const plugin = new Plugin();
+  const plugin = new Plugin({
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
+  });
 
   const stub = sinon.stub(plugin, 'addLogSubscriptions');
 
