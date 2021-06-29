@@ -43,21 +43,22 @@ module.exports = class LogSubscriptionsPlugin {
     Object.keys(functions).forEach(functionName => {
       const fn = functions[functionName];
       const config = this.getConfig(logSubscription, fn);
-      const dependsOn = this.getDependsOn(config);
-      const dependencies = [].concat(dependsOn || []);
 
       if (config.enabled) {
         if (config.addSourceLambdaPermission) {
           throw new Error('addSourceLambdaPermission is no longer supported, see README');
         }
 
-        const normalizedFunctionName = aws.naming.getNormalizedFunctionName(functionName);
+        const { destinationArn, filterPattern } = config;
+        const dependsOn = this.getDependsOn(destinationArn);
+        const dependencies = [].concat(dependsOn || []);
 
+        const normalizedFunctionName = aws.naming.getNormalizedFunctionName(functionName);
         const logicalId = `${normalizedFunctionName}SubscriptionFilter${suffix}`;
         const logGroupLogicalId = `${normalizedFunctionName}LogGroup`;
         const logGroupName = this.getLogGroupName(template, logGroupLogicalId);
 
-        if (config.addLambdaPermission && this.isLambdaFunction(dependsOn, template)) {
+        if (config.addLambdaPermission && this.isLambdaFunction(destinationArn, template)) {
           const permissionLogicalId = `${normalizedFunctionName}LogLambdaPermission`;
           const region = service.provider.region;
           const principal = `logs.${region}.amazonaws.com`;
@@ -68,16 +69,14 @@ module.exports = class LogSubscriptionsPlugin {
             Type: 'AWS::Lambda::Permission',
             Properties: {
               Action: 'lambda:InvokeFunction',
-              FunctionName: {
-                Ref: dependsOn,
-              },
+              FunctionName: destinationArn, // FunctionName can be an ARN too
               Principal: principal,
               SourceArn: {
                 'Fn::GetAtt': [
                   logGroupLogicalId,
                   'Arn'
-                ]
-              }
+                ],
+              },
             },
           };
 
@@ -89,9 +88,9 @@ module.exports = class LogSubscriptionsPlugin {
         const subscriptionFilter = {
           Type: 'AWS::Logs::SubscriptionFilter',
           Properties: {
-            DestinationArn: config.destinationArn,
-            FilterPattern: config.filterPattern,
-            LogGroupName: logGroupName
+            DestinationArn: destinationArn,
+            FilterPattern: filterPattern,
+            LogGroupName: logGroupName,
           },
           DependsOn: dependencies,
         };
@@ -147,18 +146,24 @@ module.exports = class LogSubscriptionsPlugin {
     return Object.assign(config, functionConfig);
   }
 
-  getDependsOn(config) {
-    if (config.destinationArn && typeof config.destinationArn === 'object') {
-      if (config.destinationArn['Fn::GetAtt'] && config.destinationArn['Fn::GetAtt'][1].toLowerCase() === 'arn') {
-        return config.destinationArn['Fn::GetAtt'][0];
-      } else if (config.destinationArn.Ref) {
-        return config.destinationArn.Ref;
+  getDependsOn(destinationArn) {
+    if (destinationArn && typeof destinationArn === 'object') {
+      if (destinationArn['Fn::GetAtt'] && destinationArn['Fn::GetAtt'][1].toLowerCase() === 'arn') {
+        return destinationArn['Fn::GetAtt'][0];
+      } else if (destinationArn.Ref) {
+        return destinationArn.Ref;
       }
     }
   }
 
-  isLambdaFunction(dependsOn, template) {
-    return template.Resources[dependsOn].Type === 'AWS::Lambda::Function';
+  isLambdaFunction(destinationArn, template) {
+    if (typeof destinationArn === 'string') {
+      return destinationArn.indexOf('arn:aws:lambda') === 0;
+    }
+
+    const id = this.getDependsOn(destinationArn);
+
+    return id && template.Resources[id].Type === 'AWS::Lambda::Function';
   }
 
 };
