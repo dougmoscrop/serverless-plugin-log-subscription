@@ -1,17 +1,18 @@
-'use strict';
+"use strict";
 
 module.exports = class LogSubscriptionsPlugin {
-
   constructor(serverless) {
-    this.provider = 'aws';
+    this.provider = "aws";
     this.serverless = serverless;
+    this.stage = serverless.service.provider.stage;
     this.hooks = {
-      'aws:package:finalize:mergeCustomProviderResources': () => this.addLogSubscriptions()
+      "aws:package:finalize:mergeCustomProviderResources": () =>
+        this.addLogSubscriptions(),
     };
 
     serverless.configSchemaHandler.defineFunctionProperties(this.provider, {
       properties: {
-        logSubscription: { type: 'boolean' },
+        logSubscription: { type: "boolean" },
       },
     });
   }
@@ -19,46 +20,66 @@ module.exports = class LogSubscriptionsPlugin {
   addLogSubscriptions() {
     const service = this.serverless.service;
     const functions = service.functions;
+    const apigw =
+      typeof this.serverless.service.provider.compiledCloudFormationTemplate
+        .Resources?.ApiGatewayRestApi !== "undefined";
 
     if (functions) {
       const custom = service.custom || {};
       const logSubscription = custom.logSubscription || {};
 
       if (!Array.isArray(logSubscription)) {
-        this.addLogSubscription(service, functions, logSubscription);
+        this.addLambdaLogSubscription(service, functions, logSubscription);
       } else {
         for (const index in logSubscription) {
-          this.addLogSubscription(service, functions, logSubscription[index], index);
+          this.addLambdaLogSubscription(
+            service,
+            functions,
+            logSubscription[index],
+            index
+          );
         }
       }
     }
+
+    if (apigw && service.custom.logSubscription?.enableApiGatewayLogs) {
+      const custom = service.custom || {};
+      const logSubscription = custom.logSubscription || {};
+      this.addApiGatewayLogSubscription(service, logSubscription);
+    }
   }
 
-  addLogSubscription(service, functions, logSubscription, suffix = '') {
-    const aws = this.serverless.getProvider('aws');
+  addLambdaLogSubscription(service, functions, logSubscription, suffix = "") {
+    const aws = this.serverless.getProvider("aws");
     const template = service.provider.compiledCloudFormationTemplate;
 
     template.Resources = template.Resources || {};
 
-    Object.keys(functions).forEach(functionName => {
+    Object.keys(functions).forEach((functionName) => {
       const fn = functions[functionName];
-      const config = this.getConfig(logSubscription, fn);
+      const config = this.getConfig(logSubscription, fn); // Returns default settings if lambda has no specific config
 
       if (config.enabled) {
         if (config.addSourceLambdaPermission) {
-          throw new Error('addSourceLambdaPermission is no longer supported, see README');
+          throw new Error(
+            "addSourceLambdaPermission is no longer supported, see README"
+          );
         }
 
         const { destinationArn, filterPattern } = config;
         const dependsOn = this.getDependsOn(destinationArn);
         const dependencies = [].concat(dependsOn || []);
 
-        const normalizedFunctionName = aws.naming.getNormalizedFunctionName(functionName);
+        const normalizedFunctionName =
+          aws.naming.getNormalizedFunctionName(functionName);
         const logicalId = `${normalizedFunctionName}SubscriptionFilter${suffix}`;
         const logGroupLogicalId = `${normalizedFunctionName}LogGroup`;
         const logGroupName = this.getLogGroupName(template, logGroupLogicalId);
 
-        if (config.addLambdaPermission && this.isLambdaFunction(destinationArn, template)) {
+        if (
+          config.addLambdaPermission &&
+          this.isLambdaFunction(destinationArn, template)
+        ) {
           const permissionLogicalId = `${normalizedFunctionName}LogLambdaPermission`;
           const region = service.provider.region;
           const principal = `logs.${region}.amazonaws.com`;
@@ -66,16 +87,13 @@ module.exports = class LogSubscriptionsPlugin {
           dependencies.push(permissionLogicalId);
 
           const lambdaPermission = {
-            Type: 'AWS::Lambda::Permission',
+            Type: "AWS::Lambda::Permission",
             Properties: {
-              Action: 'lambda:InvokeFunction',
+              Action: "lambda:InvokeFunction",
               FunctionName: destinationArn, // FunctionName can be an ARN too
               Principal: principal,
               SourceArn: {
-                'Fn::GetAtt': [
-                  logGroupLogicalId,
-                  'Arn'
-                ],
+                "Fn::GetAtt": [logGroupLogicalId, "Arn"],
               },
             },
           };
@@ -86,7 +104,7 @@ module.exports = class LogSubscriptionsPlugin {
         dependencies.push(logGroupLogicalId);
 
         const subscriptionFilter = {
-          Type: 'AWS::Logs::SubscriptionFilter',
+          Type: "AWS::Logs::SubscriptionFilter",
           Properties: {
             DestinationArn: destinationArn,
             FilterPattern: filterPattern,
@@ -104,19 +122,122 @@ module.exports = class LogSubscriptionsPlugin {
     });
   }
 
+  addApiGatewayLogSubscription(service, logSubscription) {
+    const aws = this.serverless.getProvider("aws");
+    const region = service.provider.region;
+
+    const template = service.provider.compiledCloudFormationTemplate;
+
+    const config = this.getConfig(logSubscription);
+
+    template.Resources = template.Resources || {};
+
+    const { destinationArn, filterPattern } = config;
+    const dependsOn = this.getDependsOn(destinationArn);
+    const dependencies = [].concat(dependsOn || []);
+
+    const accessLogFilterLogicalId = `ApiGatewayAccessLogGroupSubscriptionFilter`;
+    const executionLogFilterLogicalId = `ApiGatewayExecutionLogGroupSubscriptionFilter`;
+
+    const logGroupName =
+      template.Resources[aws.naming.getApiGatewayLogGroupLogicalId()].Properties
+        .LogGroupName;
+
+    // Add permissions for our target Lambda to be invoked by the API gateway CW Log Groups
+    if (config.addLambdaPermission) {
+      const permissionLogicalId = `ApiGatewayLogGroupLambdaPermission`;
+      const executionLogPermissionLogicalId = `ApiGatewayExecutionLogGroupLambdaPermission`;
+      const principal = `logs.${region}.amazonaws.com`;
+
+      const lambdaPermission = {
+        Type: "AWS::Lambda::Permission",
+        Properties: {
+          Action: "lambda:InvokeFunction",
+          FunctionName: destinationArn,
+          Principal: principal,
+          SourceArn: {
+            "Fn::GetAtt": [aws.naming.getApiGatewayLogGroupLogicalId(), "Arn"],
+          },
+        },
+      };
+      template.Resources[permissionLogicalId] = lambdaPermission;
+      dependencies.push(permissionLogicalId);
+
+      const executionLogLambdaPermission = {
+        Type: "AWS::Lambda::Permission",
+        Properties: {
+          Action: "lambda:InvokeFunction",
+          FunctionName: destinationArn,
+          Principal: principal,
+          SourceArn: {
+            "Fn::Sub": `arn:aws:logs:\${AWS::Region}:\${AWS::AccountId}:log-group:*"`,
+          },
+        },
+        DependsOn: [
+          aws.naming.generateApiGatewayDeploymentLogicalId(
+            this.serverless.instanceId
+          ),
+        ],
+      };
+      template.Resources[executionLogPermissionLogicalId] =
+        executionLogLambdaPermission;
+      dependencies.push(executionLogPermissionLogicalId);
+    }
+
+    // Create the subscription filters
+    const accessLogsubscriptionFilter = {
+      Type: "AWS::Logs::SubscriptionFilter",
+      Properties: {
+        DestinationArn: destinationArn,
+        FilterPattern: filterPattern,
+        LogGroupName: logGroupName,
+      },
+      DependsOn: dependencies,
+    };
+    template.Resources[accessLogFilterLogicalId] = accessLogsubscriptionFilter;
+
+    const executionLogsubscriptionFilter = {
+      Type: "AWS::Logs::SubscriptionFilter",
+      Properties: {
+        DestinationArn: destinationArn,
+        FilterPattern: filterPattern,
+        LogGroupName: {
+          "Fn::Sub": `API-Gateway-Execution-Logs_\$\{${aws.naming.getRestApiLogicalId()}\}/${
+            this.stage
+          }`,
+        },
+      },
+      DependsOn: [
+        ...dependencies,
+        aws.naming.generateApiGatewayDeploymentLogicalId(
+          this.serverless.instanceId
+        ),
+      ],
+    };
+    template.Resources[executionLogFilterLogicalId] =
+      executionLogsubscriptionFilter;
+  }
+
   getLogGroupName(template, logGroupLogicalId) {
     const logGroupResource = template.Resources[logGroupLogicalId];
 
     if (logGroupResource) {
-      if (logGroupResource.Type === 'AWS::Logs::LogGroup') {
-        if (logGroupResource.Properties && logGroupResource.Properties.LogGroupName) {
+      if (logGroupResource.Type === "AWS::Logs::LogGroup") {
+        if (
+          logGroupResource.Properties &&
+          logGroupResource.Properties.LogGroupName
+        ) {
           return logGroupResource.Properties.LogGroupName;
         }
 
-        throw new Error(`${logGroupLogicalId} did not have Properties.LogGroupName`);
+        throw new Error(
+          `${logGroupLogicalId} did not have Properties.LogGroupName`
+        );
       }
 
-      throw new Error(`Expected ${logGroupLogicalId} to have a Type of AWS::Logs::LogGroup but got ${logGroupResource.Type}`);
+      throw new Error(
+        `Expected ${logGroupLogicalId} to have a Type of AWS::Logs::LogGroup but got ${logGroupResource.Type}`
+      );
     }
 
     throw new Error(`Could not find log group resource ${logGroupLogicalId}`);
@@ -125,19 +246,19 @@ module.exports = class LogSubscriptionsPlugin {
   getConfig(common, fn) {
     const defaults = {
       enabled: false,
-      filterPattern: '',
-      addLambdaPermission: true
+      filterPattern: "",
+      addLambdaPermission: true,
     };
 
     const config = Object.assign(defaults, common);
 
-    if (fn.logSubscription === undefined) {
+    if (typeof fn === "undefined" || fn.logSubscription === undefined) {
       return config;
     }
 
     const functionConfig = {};
 
-    if (typeof fn.logSubscription === 'object') {
+    if (typeof fn.logSubscription === "object") {
       Object.assign(functionConfig, fn.logSubscription);
     } else {
       functionConfig.enabled = !!fn.logSubscription;
@@ -147,9 +268,12 @@ module.exports = class LogSubscriptionsPlugin {
   }
 
   getDependsOn(destinationArn) {
-    if (destinationArn && typeof destinationArn === 'object') {
-      if (destinationArn['Fn::GetAtt'] && destinationArn['Fn::GetAtt'][1].toLowerCase() === 'arn') {
-        return destinationArn['Fn::GetAtt'][0];
+    if (destinationArn && typeof destinationArn === "object") {
+      if (
+        destinationArn["Fn::GetAtt"] &&
+        destinationArn["Fn::GetAtt"][1].toLowerCase() === "arn"
+      ) {
+        return destinationArn["Fn::GetAtt"][0];
       } else if (destinationArn.Ref) {
         return destinationArn.Ref;
       }
@@ -157,13 +281,12 @@ module.exports = class LogSubscriptionsPlugin {
   }
 
   isLambdaFunction(destinationArn, template) {
-    if (typeof destinationArn === 'string') {
-      return destinationArn.indexOf('arn:aws:lambda') === 0;
+    if (typeof destinationArn === "string") {
+      return destinationArn.indexOf("arn:aws:lambda") === 0;
     }
 
     const id = this.getDependsOn(destinationArn);
 
-    return id && template.Resources[id].Type === 'AWS::Lambda::Function';
+    return id && template.Resources[id].Type === "AWS::Lambda::Function";
   }
-
 };
