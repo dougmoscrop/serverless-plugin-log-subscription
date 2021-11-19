@@ -3,6 +3,7 @@ root: true
 env:
     node: true
     es6: true
+    ecma2017: true
 
 extends:
     "eslint:recommended"

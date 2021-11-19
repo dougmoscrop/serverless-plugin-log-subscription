@@ -1,5 +1,10 @@
 "use strict";
 
+const {
+  CloudFormationClient,
+  DescribeStacksCommand,
+} = require("@aws-sdk/client-cloudformation");
+
 module.exports = class LogSubscriptionsPlugin {
   constructor(serverless) {
     this.provider = "aws";
@@ -17,7 +22,7 @@ module.exports = class LogSubscriptionsPlugin {
     });
   }
 
-  addLogSubscriptions() {
+  async addLogSubscriptions() {
     const service = this.serverless.service;
     const functions = service.functions;
     const apigw =
@@ -45,7 +50,7 @@ module.exports = class LogSubscriptionsPlugin {
     if (apigw && service.custom.logSubscription?.enableApiGatewayLogs) {
       const custom = service.custom || {};
       const logSubscription = custom.logSubscription || {};
-      this.addApiGatewayLogSubscription(service, logSubscription);
+      await this.addApiGatewayLogSubscription(service, logSubscription);
     }
   }
 
@@ -122,12 +127,10 @@ module.exports = class LogSubscriptionsPlugin {
     });
   }
 
-  addApiGatewayLogSubscription(service, logSubscription) {
+  async addApiGatewayLogSubscription(service, logSubscription) {
     const aws = this.serverless.getProvider("aws");
     const region = service.provider.region;
-
     const template = service.provider.compiledCloudFormationTemplate;
-
     const config = this.getConfig(logSubscription);
 
     template.Resources = template.Resources || {};
@@ -136,12 +139,29 @@ module.exports = class LogSubscriptionsPlugin {
     const dependsOn = this.getDependsOn(destinationArn);
     const dependencies = [].concat(dependsOn || []);
 
-    const accessLogFilterLogicalId = `ApiGatewayAccessLogGroupSubscriptionFilter`;
-    const executionLogFilterLogicalId = `ApiGatewayExecutionLogGroupSubscriptionFilter`;
+    // Check Cloudformation to see if we have already deployed the Stack
+    const stackName = this.serverless.getProvider("aws").naming.getStackName();
+    const cfnClient = new CloudFormationClient();
+    const cmd = new DescribeStacksCommand({ StackName: stackName });
+    const res = await cfnClient.send(cmd);
+    const isDeployed = res.Stacks.length > 0;
 
-    const logGroupName =
-      template.Resources[aws.naming.getApiGatewayLogGroupLogicalId()].Properties
-        .LogGroupName;
+    // If this is a new deployment, we pre-emptively create the execution logs group, this is normally created by AWS when Cloudwatch logs
+    // are enabled for the API Gateway.
+    if (!isDeployed) {
+      const executionLogGroup = {
+        Type: "AWS::Logs::LogGroup",
+        DeletionPolicy: "Retain",
+        Properties: {
+          LogGroupName: {
+            "Fn::Sub": `API-Gateway-Execution-Logs_\$\{${aws.naming.getRestApiLogicalId()}\}/${
+              this.stage
+            }`,
+          },
+        },
+      };
+      template.Resources["ApiGatewayExecutionLogGroup"] = executionLogGroup;
+    }
 
     // Add permissions for our target Lambda to be invoked by the API gateway CW Log Groups
     if (config.addLambdaPermission) {
@@ -170,14 +190,11 @@ module.exports = class LogSubscriptionsPlugin {
           FunctionName: destinationArn,
           Principal: principal,
           SourceArn: {
-            "Fn::Sub": `arn:aws:logs:\${AWS::Region}:\${AWS::AccountId}:log-group:*"`,
+            "Fn::Sub": `arn:aws:logs:\${AWS::Region}:\${AWS::AccountId}:log-group:API-Gateway-Execution-Logs_\$\{${aws.naming.getRestApiLogicalId()}\}/${
+              this.stage
+            }:*`,
           },
         },
-        DependsOn: [
-          aws.naming.generateApiGatewayDeploymentLogicalId(
-            this.serverless.instanceId
-          ),
-        ],
       };
       template.Resources[executionLogPermissionLogicalId] =
         executionLogLambdaPermission;
@@ -190,11 +207,14 @@ module.exports = class LogSubscriptionsPlugin {
       Properties: {
         DestinationArn: destinationArn,
         FilterPattern: filterPattern,
-        LogGroupName: logGroupName,
+        LogGroupName: {
+          Ref: aws.naming.getApiGatewayLogGroupLogicalId(),
+        },
       },
       DependsOn: dependencies,
     };
-    template.Resources[accessLogFilterLogicalId] = accessLogsubscriptionFilter;
+    template.Resources["ApiGatewayAccessLogGroupSubscriptionFilter"] =
+      accessLogsubscriptionFilter;
 
     const executionLogsubscriptionFilter = {
       Type: "AWS::Logs::SubscriptionFilter",
@@ -214,7 +234,7 @@ module.exports = class LogSubscriptionsPlugin {
         ),
       ],
     };
-    template.Resources[executionLogFilterLogicalId] =
+    template.Resources["ApiGatewayExecutionLogGroupSubscriptionFilter"] =
       executionLogsubscriptionFilter;
   }
 
