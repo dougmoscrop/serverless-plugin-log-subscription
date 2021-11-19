@@ -143,8 +143,17 @@ module.exports = class LogSubscriptionsPlugin {
     const stackName = this.serverless.getProvider("aws").naming.getStackName();
     const cfnClient = new CloudFormationClient();
     const cmd = new DescribeStacksCommand({ StackName: stackName });
-    const res = await cfnClient.send(cmd);
-    const isDeployed = res.Stacks.length > 0;
+
+    let res;
+    try {
+      res = await cfnClient.send(cmd);
+    } catch (err) {
+      if (err.message.includes("does not exist")) {
+        return; // If stack doesn't exist it will throw an error, catching it here and doing nothing
+      }
+      throw err;
+    }
+    const isDeployed = res?.Stacks.length > 0;
 
     // If this is a new deployment, we pre-emptively create the execution logs group, this is normally created by AWS when Cloudwatch logs
     // are enabled for the API Gateway.
