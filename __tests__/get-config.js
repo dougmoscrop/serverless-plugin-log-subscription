@@ -4,7 +4,7 @@ const test = require('ava');
 
 const Plugin = require('..');
 
-test('defaults to disabled', t => {
+test('defaults to disabled', (t) => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -19,7 +19,7 @@ test('defaults to disabled', t => {
   t.false(config.enabled);
 });
 
-test('enabled by function (true)', t => {
+test('enabled by function (true)', (t) => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -31,10 +31,15 @@ test('enabled by function (true)', t => {
 
   const config = plugin.getConfig(null, { name: 'a', logSubscription: true });
 
-  t.deepEqual(config, { enabled: true, filterPattern: '', addLambdaPermission: true });
+  t.deepEqual(config, {
+    enabled: true,
+    filterPattern: '',
+    addLambdaPermission: true,
+    apiGatewayLogs: true,
+  });
 });
 
-test('enabled by function (object)', t => {
+test('enabled by function (object)', (t) => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -49,7 +54,7 @@ test('enabled by function (object)', t => {
   t.true(config.enabled);
 });
 
-test('disabled by function (false)', t => {
+test('disabled by function (false)', (t) => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -64,7 +69,7 @@ test('disabled by function (false)', t => {
   t.false(config.enabled);
 });
 
-test('disabled by function (object)', t => {
+test('disabled by function (object)', (t) => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -79,7 +84,7 @@ test('disabled by function (object)', t => {
   t.false(config.enabled);
 });
 
-test('enabled (globally)', t => {
+test('enabled (globally)', (t) => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -94,7 +99,7 @@ test('enabled (globally)', t => {
   t.true(config.enabled);
 });
 
-test('disabled (function overrides globally)', t => {
+test('disabled (function overrides globally)', (t) => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -109,7 +114,7 @@ test('disabled (function overrides globally)', t => {
   t.false(config.enabled);
 });
 
-test('global config', t => {
+test('global config', (t) => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -119,13 +124,16 @@ test('global config', t => {
 
   const plugin = new Plugin(serverless);
 
-  const config = plugin.getConfig({ destinationArn: 'foo', filterPattern: 'abc' }, { logSubscription: {} });
+  const config = plugin.getConfig(
+    { destinationArn: 'foo', filterPattern: 'abc' },
+    { logSubscription: {} }
+  );
 
   t.deepEqual(config.destinationArn, 'foo');
   t.deepEqual(config.filterPattern, 'abc');
 });
 
-test('function override', t => {
+test('function override', (t) => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -135,12 +143,15 @@ test('function override', t => {
 
   const plugin = new Plugin(serverless);
 
-  const config = plugin.getConfig({ destinationArn: 'foo', filterPattern: 'abc' }, {
-    logSubscription: {
-      destinationArn: 'bar',
-      filterPattern: 'qqq'
+  const config = plugin.getConfig(
+    { destinationArn: 'foo', filterPattern: 'abc' },
+    {
+      logSubscription: {
+        destinationArn: 'bar',
+        filterPattern: 'qqq',
+      },
     }
-  });
+  );
 
   t.deepEqual(config.destinationArn, 'bar');
   t.deepEqual(config.filterPattern, 'qqq');

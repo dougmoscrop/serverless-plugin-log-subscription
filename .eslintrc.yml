@@ -3,7 +3,9 @@ root: true
 env:
     node: true
     es6: true
-    ecma2017: true
+
+parserOptions:
+    ecmaVersion: 2020
 
 extends:
     "eslint:recommended"
