@@ -6,7 +6,7 @@ const { CloudFormationClient, DescribeStacksCommand } = require('@aws-sdk/client
 
 const Plugin = require('..');
 
-test('returns true if stack already exists', async (t) => {
+test('returns true if stack already exists', async t => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -30,7 +30,7 @@ test('returns true if stack already exists', async (t) => {
   t.true(result);
 });
 
-test('returns false if no existing stack is found', async (t) => {
+test('returns false if no existing stack is found', async t => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -48,7 +48,7 @@ test('returns false if no existing stack is found', async (t) => {
   t.false(result);
 });
 
-test('throws error for any other aws-sdk exception', async (t) => {
+test('throws error for any other aws-sdk exception', async t => {
   const serverless = {
     service: {},
     configSchemaHandler: {

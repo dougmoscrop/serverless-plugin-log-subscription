@@ -50,7 +50,7 @@ module.exports = class LogSubscriptionsPlugin {
 
     template.Resources = template.Resources || {};
 
-    Object.keys(functions).forEach((functionName) => {
+    Object.keys(functions).forEach(functionName => {
       const fn = functions[functionName];
       const config = this.getConfig(logSubscription, fn);
 

@@ -5,7 +5,7 @@ const test = require('ava');
 
 const Plugin = require('..');
 
-test('does nothing when there are no functions', (t) => {
+test('does nothing when there are no functions', t => {
   const serverless = {
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
@@ -20,7 +20,7 @@ test('does nothing when there are no functions', (t) => {
   t.pass();
 });
 
-test('adds subscriptions for enabled functions', (t) => {
+test('adds subscriptions for enabled functions', t => {
   const getNormalizedFunctionName = sinon.stub().onCall(0).returns('A').onCall(1).returns('B');
 
   const provider = {
@@ -72,7 +72,7 @@ test('adds subscriptions for enabled functions', (t) => {
   t.deepEqual(resources.BSubscriptionFilter.Type, 'AWS::Logs::SubscriptionFilter');
 });
 
-test('configures the subscription filter correctly', (t) => {
+test('configures the subscription filter correctly', t => {
   const getNormalizedFunctionName = sinon.stub().returns('A');
 
   const provider = {
@@ -118,7 +118,7 @@ test('configures the subscription filter correctly', (t) => {
   });
 });
 
-test('configures the subscription filter with RoleArn correctly', (t) => {
+test('configures the subscription filter with RoleArn correctly', t => {
   const getNormalizedFunctionName = sinon.stub().returns('A');
 
   const provider = {
@@ -166,7 +166,7 @@ test('configures the subscription filter with RoleArn correctly', (t) => {
   });
 });
 
-test('configures the subscription filter with DependsOn the log group', (t) => {
+test('configures the subscription filter with DependsOn the log group', t => {
   const getNormalizedFunctionName = sinon.stub().returns('A');
 
   const provider = {
@@ -209,7 +209,7 @@ test('configures the subscription filter with DependsOn the log group', (t) => {
   t.deepEqual(resources.ASubscriptionFilter.DependsOn, ['ALogGroup']);
 });
 
-test('configures the subscription filter with DependsOn the lambda function', (t) => {
+test('configures the subscription filter with DependsOn the lambda function', t => {
   const getNormalizedFunctionName = sinon.stub().returns('A');
 
   const provider = {
@@ -260,7 +260,7 @@ test('configures the subscription filter with DependsOn the lambda function', (t
   t.deepEqual(resources.ASubscriptionFilter.DependsOn, ['BLambdaFunction', 'ALogGroup']);
 });
 
-test('configures api gateway log subscriptions without creating Execution Log group if pre-existing stack', async (t) => {
+test('configures api gateway log subscriptions without creating Execution Log group if pre-existing stack', async t => {
   const getNormalizedFunctionName = sinon.stub().returns('A');
   const getRestApiLogicalId = sinon.stub().returns('abcd1234');
   const getApiGatewayLogGroupLogicalId = sinon.stub().returns('ApiGatewayLogGroup');
@@ -384,7 +384,7 @@ test('configures api gateway log subscriptions without creating Execution Log gr
   });
 });
 
-test("doesn't configure api gateway log subscriptions when provider.logs.restApi is false", async (t) => {
+test("doesn't configure api gateway log subscriptions when provider.logs.restApi is false", async t => {
   const getNormalizedFunctionName = sinon.stub().onCall(0).returns('A').onCall(1).returns('B');
   const getRestApiLogicalId = sinon.stub().returns('abcd1234');
   const getApiGatewayLogGroupLogicalId = sinon.stub().returns('ApiGatewayLogGroup');

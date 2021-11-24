@@ -4,7 +4,7 @@ const test = require('ava');
 
 const Plugin = require('..');
 
-test('defaults to disabled', (t) => {
+test('defaults to disabled', t => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -19,7 +19,7 @@ test('defaults to disabled', (t) => {
   t.false(config.enabled);
 });
 
-test('enabled by function (true)', (t) => {
+test('enabled by function (true)', t => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -39,7 +39,7 @@ test('enabled by function (true)', (t) => {
   });
 });
 
-test('enabled by function (object)', (t) => {
+test('enabled by function (object)', t => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -54,7 +54,7 @@ test('enabled by function (object)', (t) => {
   t.true(config.enabled);
 });
 
-test('disabled by function (false)', (t) => {
+test('disabled by function (false)', t => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -69,7 +69,7 @@ test('disabled by function (false)', (t) => {
   t.false(config.enabled);
 });
 
-test('disabled by function (object)', (t) => {
+test('disabled by function (object)', t => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -84,7 +84,7 @@ test('disabled by function (object)', (t) => {
   t.false(config.enabled);
 });
 
-test('enabled (globally)', (t) => {
+test('enabled (globally)', t => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -99,7 +99,7 @@ test('enabled (globally)', (t) => {
   t.true(config.enabled);
 });
 
-test('disabled (function overrides globally)', (t) => {
+test('disabled (function overrides globally)', t => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -114,7 +114,7 @@ test('disabled (function overrides globally)', (t) => {
   t.false(config.enabled);
 });
 
-test('global config', (t) => {
+test('global config', t => {
   const serverless = {
     service: {},
     configSchemaHandler: {
@@ -133,7 +133,7 @@ test('global config', (t) => {
   t.deepEqual(config.filterPattern, 'abc');
 });
 
-test('function override', (t) => {
+test('function override', t => {
   const serverless = {
     service: {},
     configSchemaHandler: {
