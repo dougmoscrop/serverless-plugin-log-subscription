@@ -265,6 +265,7 @@ test('configures api gateway log subscriptions without creating Execution Log gr
   const getRestApiLogicalId = sinon.stub().returns('abcd1234');
   const getApiGatewayLogGroupLogicalId = sinon.stub().returns('ApiGatewayLogGroup');
   const generateApiGatewayDeploymentLogicalId = sinon.stub().returns('ApiGatewayDeployment1234');
+  const getStackName = sinon.stub().returns('testing-cfn-stack');
 
   const provider = {
     naming: {
@@ -272,6 +273,7 @@ test('configures api gateway log subscriptions without creating Execution Log gr
       getRestApiLogicalId,
       getApiGatewayLogGroupLogicalId,
       generateApiGatewayDeploymentLogicalId,
+      getStackName,
     },
   };
   const serverless = {
@@ -387,6 +389,7 @@ test("doesn't configure api gateway log subscriptions when provider.logs.restApi
   const getRestApiLogicalId = sinon.stub().returns('abcd1234');
   const getApiGatewayLogGroupLogicalId = sinon.stub().returns('ApiGatewayLogGroup');
   const generateApiGatewayDeploymentLogicalId = sinon.stub().returns('ApiGatewayDeployment1234');
+  const getStackName = sinon.stub().returns('testing-cfn-stack');
 
   const provider = {
     naming: {
@@ -394,6 +397,7 @@ test("doesn't configure api gateway log subscriptions when provider.logs.restApi
       getRestApiLogicalId,
       generateApiGatewayDeploymentLogicalId,
       getApiGatewayLogGroupLogicalId,
+      getStackName,
     },
   };
   const serverless = {

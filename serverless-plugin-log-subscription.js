@@ -52,7 +52,7 @@ module.exports = class LogSubscriptionsPlugin {
 
     Object.keys(functions).forEach((functionName) => {
       const fn = functions[functionName];
-      const config = this.getConfig(logSubscription, fn); // Returns default settings if lambda has no specific config
+      const config = this.getConfig(logSubscription, fn);
 
       if (config.enabled) {
         if (config.addSourceLambdaPermission) {
@@ -116,6 +116,7 @@ module.exports = class LogSubscriptionsPlugin {
     const region = service.provider.region;
     const template = service.provider.compiledCloudFormationTemplate;
     const config = this.getConfig(logSubscription);
+    const stackName = this.serverless.getProvider('aws').naming.getStackName();
 
     template.Resources = template.Resources || {};
 
@@ -124,13 +125,15 @@ module.exports = class LogSubscriptionsPlugin {
       const dependsOn = this.getDependsOn(destinationArn);
       const dependencies = [].concat(dependsOn || []);
 
-      const isDeployed = await this.isDeployed();
+      const isDeployed = await this.isDeployed(stackName);
 
       // If this is a new deployment, we pre-emptively create the execution logs group, this is normally created by AWS when Cloudwatch logs
       // are enabled for the API Gateway.
       if (!isDeployed) {
         const executionLogGroup = {
           Type: 'AWS::Logs::LogGroup',
+          // If the group is created by AWS, it persists after the associated API Gateway is deleted, so we are
+          // setting the DeletionPolicy to Retain to emulate this.
           DeletionPolicy: 'Retain',
           Properties: {
             LogGroupName: {
@@ -278,9 +281,9 @@ module.exports = class LogSubscriptionsPlugin {
     return id && template.Resources[id].Type === 'AWS::Lambda::Function';
   }
 
-  async isDeployed() {
-    // Check Cloudformation to see if we have already deployed the Stack
-    const stackName = this.serverless.getProvider('aws').naming.getStackName();
+  // isDeployed calls AWS to see if a CloudFormation stack with the same name already exists, if so
+  // then we can safely assume that this is a pre-existing deployment.
+  async isDeployed(stackName) {
     const cfnClient = new CloudFormationClient();
     const cmd = new DescribeStacksCommand({ StackName: stackName });
 

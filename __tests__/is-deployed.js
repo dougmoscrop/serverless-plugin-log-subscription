@@ -1,6 +1,5 @@
 'use strict';
 
-const sinon = require('sinon');
 const test = require('ava');
 const { mockClient } = require('aws-sdk-client-mock');
 const { CloudFormationClient, DescribeStacksCommand } = require('@aws-sdk/client-cloudformation');
@@ -8,19 +7,11 @@ const { CloudFormationClient, DescribeStacksCommand } = require('@aws-sdk/client
 const Plugin = require('..');
 
 test('returns true if stack already exists', async (t) => {
-  const getStackName = sinon.stub().returns('testing-cfn-stack');
-
-  const provider = {
-    naming: {
-      getStackName,
-    },
-  };
   const serverless = {
     service: {},
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },
-    getProvider: sinon.stub().withArgs('aws').returns(provider),
   };
 
   const cfnMock = mockClient(CloudFormationClient);
@@ -34,25 +25,17 @@ test('returns true if stack already exists', async (t) => {
 
   const plugin = new Plugin(serverless);
 
-  const result = await plugin.isDeployed();
+  const result = await plugin.isDeployed('testing-cfn-stack');
 
   t.true(result);
 });
 
 test('returns false if no existing stack is found', async (t) => {
-  const getStackName = sinon.stub().returns('testing-cfn-stack');
-
-  const provider = {
-    naming: {
-      getStackName,
-    },
-  };
   const serverless = {
     service: {},
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },
-    getProvider: sinon.stub().withArgs('aws').returns(provider),
   };
 
   const cfnMock = mockClient(CloudFormationClient);
@@ -60,25 +43,17 @@ test('returns false if no existing stack is found', async (t) => {
 
   const plugin = new Plugin(serverless);
 
-  const result = await plugin.isDeployed();
+  const result = await plugin.isDeployed('testing-cfn-stack');
 
   t.false(result);
 });
 
 test('throws error for any other aws-sdk exception', async (t) => {
-  const getStackName = sinon.stub().returns('testing-cfn-stack');
-
-  const provider = {
-    naming: {
-      getStackName,
-    },
-  };
   const serverless = {
     service: {},
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },
-    getProvider: sinon.stub().withArgs('aws').returns(provider),
   };
 
   const cfnMock = mockClient(CloudFormationClient);

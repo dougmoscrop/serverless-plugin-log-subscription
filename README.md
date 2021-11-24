@@ -24,6 +24,8 @@ Configuration happens both 'globally' (via custom.logSubscription) and also at t
 
 `filterPattern` (optional) if specified, it will only forward logs matching this pattern. You can do simple token matching, or JSON matching (e.g. `{ $.level >= 30 }` to match a bunyan level)
 
+`apiGatewayLogs` (optional) if `true` the plugin will configure a log subscription for the API Gateway access and execution log groups. This feature only works if logging is enabled for the API gateway as well.
+
 ### Examples
 
 The most basic:
