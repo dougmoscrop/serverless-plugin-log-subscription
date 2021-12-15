@@ -33,7 +33,7 @@
     "sinon": "^11.1.1"
   },
   "peerDependencies": {
-    "serverless": "^2.10.0"
+    "serverless": "^2.10.0 || 3"
   },
   "dependencies": {
     "@aws-sdk/client-cloudformation": "^3.41.0"
