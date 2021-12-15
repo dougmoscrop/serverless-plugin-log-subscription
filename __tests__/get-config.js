@@ -31,7 +31,12 @@ test('enabled by function (true)', t => {
 
   const config = plugin.getConfig(null, { name: 'a', logSubscription: true });
 
-  t.deepEqual(config, { enabled: true, filterPattern: '', addLambdaPermission: true });
+  t.deepEqual(config, {
+    enabled: true,
+    filterPattern: '',
+    addLambdaPermission: true,
+    apiGatewayLogs: true,
+  });
 });
 
 test('enabled by function (object)', t => {
@@ -119,7 +124,10 @@ test('global config', t => {
 
   const plugin = new Plugin(serverless);
 
-  const config = plugin.getConfig({ destinationArn: 'foo', filterPattern: 'abc' }, { logSubscription: {} });
+  const config = plugin.getConfig(
+    { destinationArn: 'foo', filterPattern: 'abc' },
+    { logSubscription: {} }
+  );
 
   t.deepEqual(config.destinationArn, 'foo');
   t.deepEqual(config.filterPattern, 'abc');
@@ -135,12 +143,15 @@ test('function override', t => {
 
   const plugin = new Plugin(serverless);
 
-  const config = plugin.getConfig({ destinationArn: 'foo', filterPattern: 'abc' }, {
-    logSubscription: {
-      destinationArn: 'bar',
-      filterPattern: 'qqq'
+  const config = plugin.getConfig(
+    { destinationArn: 'foo', filterPattern: 'abc' },
+    {
+      logSubscription: {
+        destinationArn: 'bar',
+        filterPattern: 'qqq',
+      },
     }
-  });
+  );
 
   t.deepEqual(config.destinationArn, 'bar');
   t.deepEqual(config.filterPattern, 'qqq');

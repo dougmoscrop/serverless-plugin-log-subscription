@@ -1,12 +1,13 @@
 'use strict';
 
-module.exports = class LogSubscriptionsPlugin {
+const { CloudFormationClient, DescribeStacksCommand } = require('@aws-sdk/client-cloudformation');
 
+module.exports = class LogSubscriptionsPlugin {
   constructor(serverless) {
     this.provider = 'aws';
     this.serverless = serverless;
     this.hooks = {
-      'aws:package:finalize:mergeCustomProviderResources': () => this.addLogSubscriptions()
+      'aws:package:finalize:mergeCustomProviderResources': () => this.addLogSubscriptions(),
     };
 
     serverless.configSchemaHandler.defineFunctionProperties(this.provider, {
@@ -16,7 +17,7 @@ module.exports = class LogSubscriptionsPlugin {
     });
   }
 
-  addLogSubscriptions() {
+  async addLogSubscriptions() {
     const service = this.serverless.service;
     const functions = service.functions;
 
@@ -25,16 +26,25 @@ module.exports = class LogSubscriptionsPlugin {
       const logSubscription = custom.logSubscription || {};
 
       if (!Array.isArray(logSubscription)) {
-        this.addLogSubscription(service, functions, logSubscription);
+        this.addLambdaLogSubscription(service, functions, logSubscription);
       } else {
         for (const index in logSubscription) {
-          this.addLogSubscription(service, functions, logSubscription[index], index);
+          this.addLambdaLogSubscription(service, functions, logSubscription[index], index);
         }
       }
     }
+
+    const apiGateway =
+      service.functions && this.serverless.getProvider('aws').naming.getApiGatewayLogGroupLogicalId;
+
+    if (apiGateway) {
+      const custom = service.custom || {};
+      const logSubscription = custom.logSubscription || {};
+      await this.addApiGatewayLogSubscription(service, logSubscription);
+    }
   }
 
-  addLogSubscription(service, functions, logSubscription, suffix = '') {
+  addLambdaLogSubscription(service, functions, logSubscription, suffix = '') {
     const aws = this.serverless.getProvider('aws');
     const template = service.provider.compiledCloudFormationTemplate;
 
@@ -72,10 +82,7 @@ module.exports = class LogSubscriptionsPlugin {
               FunctionName: destinationArn, // FunctionName can be an ARN too
               Principal: principal,
               SourceArn: {
-                'Fn::GetAtt': [
-                  logGroupLogicalId,
-                  'Arn'
-                ],
+                'Fn::GetAtt': [logGroupLogicalId, 'Arn'],
               },
             },
           };
@@ -104,6 +111,111 @@ module.exports = class LogSubscriptionsPlugin {
     });
   }
 
+  async addApiGatewayLogSubscription(service, logSubscription) {
+    const aws = this.serverless.getProvider('aws');
+    const region = service.provider.region;
+    const template = service.provider.compiledCloudFormationTemplate;
+    const config = this.getConfig(logSubscription);
+    const stackName = this.serverless.getProvider('aws').naming.getStackName();
+
+    template.Resources = template.Resources || {};
+
+    if (service.provider.logs.restApi && config.apiGatewayLogs) {
+      const { destinationArn, filterPattern } = config;
+      const dependsOn = this.getDependsOn(destinationArn);
+      const dependencies = [].concat(dependsOn || []);
+
+      const isDeployed = await this.isDeployed(stackName);
+
+      // If this is a new deployment, we pre-emptively create the execution logs group, this is normally created by AWS when Cloudwatch logs
+      // are enabled for the API Gateway.
+      if (!isDeployed) {
+        const executionLogGroup = {
+          Type: 'AWS::Logs::LogGroup',
+          // If the group is created by AWS, it persists after the associated API Gateway is deleted, so we are
+          // setting the DeletionPolicy to Retain to emulate this.
+          DeletionPolicy: 'Retain',
+          Properties: {
+            LogGroupName: {
+              'Fn::Sub': `API-Gateway-Execution-Logs_$\{${aws.naming.getRestApiLogicalId()}}/${
+                this.serverless.service.provider.stage
+              }`,
+            },
+          },
+        };
+        template.Resources['ApiGatewayExecutionLogGroup'] = executionLogGroup;
+      }
+
+      // Add permissions for our target Lambda to be invoked by the API gateway CW Log Groups
+      if (config.addLambdaPermission) {
+        const principal = `logs.${region}.amazonaws.com`;
+
+        const lambdaPermission = {
+          Type: 'AWS::Lambda::Permission',
+          Properties: {
+            Action: 'lambda:InvokeFunction',
+            FunctionName: destinationArn,
+            Principal: principal,
+            SourceArn: {
+              'Fn::GetAtt': [aws.naming.getApiGatewayLogGroupLogicalId(), 'Arn'],
+            },
+          },
+        };
+        template.Resources['ApiGatewayLogGroupLambdaPermission'] = lambdaPermission;
+
+        const executionLogLambdaPermission = {
+          Type: 'AWS::Lambda::Permission',
+          Properties: {
+            Action: 'lambda:InvokeFunction',
+            FunctionName: destinationArn,
+            Principal: principal,
+            SourceArn: {
+              'Fn::Sub': `arn:aws:logs:\${AWS::Region}:\${AWS::AccountId}:log-group:API-Gateway-Execution-Logs_$\{${aws.naming.getRestApiLogicalId()}}/${
+                this.serverless.service.provider.stage
+              }:*`,
+            },
+          },
+        };
+        template.Resources['ApiGatewayExecutionLogGroupLambdaPermission'] =
+          executionLogLambdaPermission;
+      }
+
+      // Create the subscription filters
+      const accessLogsubscriptionFilter = {
+        Type: 'AWS::Logs::SubscriptionFilter',
+        Properties: {
+          DestinationArn: destinationArn,
+          FilterPattern: filterPattern,
+          LogGroupName: {
+            Ref: aws.naming.getApiGatewayLogGroupLogicalId(),
+          },
+        },
+        DependsOn: ['ApiGatewayLogGroupLambdaPermission'],
+      };
+      template.Resources['ApiGatewayAccessLogGroupSubscriptionFilter'] =
+        accessLogsubscriptionFilter;
+
+      const executionLogsubscriptionFilter = {
+        Type: 'AWS::Logs::SubscriptionFilter',
+        Properties: {
+          DestinationArn: destinationArn,
+          FilterPattern: filterPattern,
+          LogGroupName: {
+            'Fn::Sub': `API-Gateway-Execution-Logs_$\{${aws.naming.getRestApiLogicalId()}}/${
+              this.serverless.service.provider.stage
+            }`,
+          },
+        },
+        DependsOn: [
+          ...dependencies,
+          aws.naming.generateApiGatewayDeploymentLogicalId(this.serverless.instanceId),
+        ],
+      };
+      template.Resources['ApiGatewayExecutionLogGroupSubscriptionFilter'] =
+        executionLogsubscriptionFilter;
+    }
+  }
+
   getLogGroupName(template, logGroupLogicalId) {
     const logGroupResource = template.Resources[logGroupLogicalId];
 
@@ -116,7 +228,9 @@ module.exports = class LogSubscriptionsPlugin {
         throw new Error(`${logGroupLogicalId} did not have Properties.LogGroupName`);
       }
 
-      throw new Error(`Expected ${logGroupLogicalId} to have a Type of AWS::Logs::LogGroup but got ${logGroupResource.Type}`);
+      throw new Error(
+        `Expected ${logGroupLogicalId} to have a Type of AWS::Logs::LogGroup but got ${logGroupResource.Type}`
+      );
     }
 
     throw new Error(`Could not find log group resource ${logGroupLogicalId}`);
@@ -126,12 +240,13 @@ module.exports = class LogSubscriptionsPlugin {
     const defaults = {
       enabled: false,
       filterPattern: '',
-      addLambdaPermission: true
+      addLambdaPermission: true,
+      apiGatewayLogs: true,
     };
 
     const config = Object.assign(defaults, common);
 
-    if (fn.logSubscription === undefined) {
+    if (typeof fn === 'undefined' || fn.logSubscription === undefined) {
       return config;
     }
 
@@ -166,4 +281,21 @@ module.exports = class LogSubscriptionsPlugin {
     return id && template.Resources[id].Type === 'AWS::Lambda::Function';
   }
 
+  // isDeployed calls AWS to see if a CloudFormation stack with the same name already exists, if so
+  // then we can safely assume that this is a pre-existing deployment.
+  async isDeployed(stackName) {
+    const cfnClient = new CloudFormationClient();
+    const cmd = new DescribeStacksCommand({ StackName: stackName });
+
+    let res;
+    try {
+      res = await cfnClient.send(cmd);
+    } catch (err) {
+      if (err.message.includes('does not exist')) {
+        return false; // If stack doesn't exist it will throw an error, catching it here returning false
+      }
+      throw err;
+    }
+    return res?.Stacks.length > 0;
+  }
 };
