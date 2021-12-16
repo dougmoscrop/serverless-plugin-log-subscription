@@ -120,7 +120,7 @@ module.exports = class LogSubscriptionsPlugin {
 
     template.Resources = template.Resources || {};
 
-    if (service.provider.logs.restApi && config.apiGatewayLogs) {
+    if (service.provider.logs && service.provider.logs.restApi && config.apiGatewayLogs) {
       const { destinationArn, filterPattern } = config;
       const dependsOn = this.getDependsOn(destinationArn);
       const dependencies = [].concat(dependsOn || []);
