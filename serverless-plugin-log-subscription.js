@@ -296,6 +296,6 @@ module.exports = class LogSubscriptionsPlugin {
       }
       throw err;
     }
-    return res?.Stacks.length > 0;
+    return res.Stacks.length > 0;
   }
 };
