@@ -7,6 +7,7 @@ const Plugin = require('..');
 
 test('adds the right hooks', t => {
   const plugin = new Plugin({
+    getProvider: sinon.stub().withArgs('aws').returns({}),
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },
@@ -17,6 +18,7 @@ test('adds the right hooks', t => {
 
 test('hook calls the method', t => {
   const plugin = new Plugin({
+    getProvider: sinon.stub().withArgs('aws').returns({}),
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },

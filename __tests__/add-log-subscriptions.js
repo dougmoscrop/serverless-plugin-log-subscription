@@ -7,6 +7,7 @@ const Plugin = require('..');
 
 test('does nothing when there are no functions', t => {
   const serverless = {
+    getProvider: sinon.stub().withArgs('aws').returns({}),
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },
