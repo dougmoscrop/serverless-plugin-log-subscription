@@ -13,8 +13,6 @@ module.exports = class LogSubscriptionsPlugin {
         logSubscription: { type: 'boolean' },
       },
     });
-
-    console.log(this.provider);
   }
 
   async addLogSubscriptions() {
