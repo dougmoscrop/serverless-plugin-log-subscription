@@ -38,7 +38,7 @@ test('enabled by function (true)', t => {
     enabled: true,
     filterPattern: '',
     addLambdaPermission: true,
-    apiGatewayLogs: true,
+    apiGatewayLogs: false,
   });
 });
 

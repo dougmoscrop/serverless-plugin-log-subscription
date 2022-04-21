@@ -238,7 +238,7 @@ module.exports = class LogSubscriptionsPlugin {
       enabled: false,
       filterPattern: '',
       addLambdaPermission: true,
-      apiGatewayLogs: true,
+      apiGatewayLogs: false,
     };
 
     const config = Object.assign(defaults, common);
