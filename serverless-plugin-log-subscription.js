@@ -34,7 +34,7 @@ module.exports = class LogSubscriptionsPlugin {
 
     const apiGateway = service.functions && this.provider.naming.getApiGatewayLogGroupLogicalId;
 
-    if (apiGateway) {
+    if (apiGateway && service.provider.logs.restApi) {
       const custom = service.custom || {};
       const logSubscription = custom.logSubscription || {};
       await this.addApiGatewayLogSubscription(service, logSubscription);
@@ -112,61 +112,64 @@ module.exports = class LogSubscriptionsPlugin {
     const aws = this.provider;
     const region = service.provider.region;
     const template = service.provider.compiledCloudFormationTemplate;
-    const config = this.getConfig(logSubscription);
     const stackName = this.provider.naming.getStackName();
-    const { executionLogging, accessLogging } = service.provider.logs.restApi;
+    const config = this.getConfig(logSubscription);
+    const { access, execution } = config.apiGatewayLogs;
     const principal = `logs.${region}.amazonaws.com`;
 
     template.Resources = template.Resources || {};
 
-    if (service.provider.logs && service.provider.logs.restApi && config.apiGatewayLogs) {
-      const { destinationArn, filterPattern } = config;
-      //const dependsOn = this.getDependsOn(destinationArn);
-      //const dependencies = [].concat(dependsOn || []);
-      const isDeployed = await this.isDeployed(stackName);
+    const { destinationArn, filterPattern } = config;
+    const isDeployed = await this.isDeployed(stackName);
 
-      if (accessLogging) {
-        if (config.addLambdaPermission) {
-          const lambdaPermission = {
-            Type: 'AWS::Lambda::Permission',
-            Properties: {
-              Action: 'lambda:InvokeFunction',
-              FunctionName: destinationArn,
-              Principal: principal,
-              SourceArn: {
-                'Fn::GetAtt': [aws.naming.getApiGatewayLogGroupLogicalId(), 'Arn'],
-              },
-            },
-          };
-
-          template.Resources['ApiGatewayLogGroupLambdaPermission'] = lambdaPermission;
-        }
-
-        // Create the subscription filters
-        const accessLogsubscriptionFilter = {
-          Type: 'AWS::Logs::SubscriptionFilter',
+    // Handle creating the subscription filter for the access log group
+    if (service.provider.logs.restApi.accessLogging && access) {
+      if (config.addLambdaPermission) {
+        const lambdaPermission = {
+          Type: 'AWS::Lambda::Permission',
           Properties: {
-            DestinationArn: destinationArn,
-            FilterPattern: filterPattern,
-            LogGroupName: {
-              Ref: aws.naming.getApiGatewayLogGroupLogicalId(),
+            Action: 'lambda:InvokeFunction',
+            FunctionName: destinationArn,
+            Principal: principal,
+            SourceArn: {
+              'Fn::GetAtt': [aws.naming.getApiGatewayLogGroupLogicalId(), 'Arn'],
             },
           },
-          ...(config.addLambdaPermission && { DependsOn: ['ApiGatewayLogGroupLambdaPermission'] }),
+          DependsOn: ['ApiGatewayLogGroup'],
         };
-
-        template.Resources['ApiGatewayAccessLogGroupSubscriptionFilter'] =
-          accessLogsubscriptionFilter;
+        template.Resources['ApiGatewayLogGroupLambdaPermission'] = lambdaPermission;
       }
 
-      if (executionLogging) {
-        // If this is a new deployment, we pre-emptively create the execution logs group, this is normally created by AWS when Cloudwatch logs
-        // are enabled for the API Gateway.
-        if (!isDeployed) {
+      // Create the subscription filters
+      const accessLogsubscriptionFilter = {
+        Type: 'AWS::Logs::SubscriptionFilter',
+        Properties: {
+          DestinationArn: destinationArn,
+          FilterPattern: filterPattern,
+          LogGroupName: {
+            Ref: aws.naming.getApiGatewayLogGroupLogicalId(),
+          },
+        },
+        ...(config.addLambdaPermission && { DependsOn: ['ApiGatewayLogGroupLambdaPermission'] }),
+      };
+
+      template.Resources['ApiGatewayAccessLogGroupSubscriptionFilter'] =
+        accessLogsubscriptionFilter;
+    }
+
+    // Handle creating the filter for the execution log group
+    if (service.provider.logs.restApi.executionLogging && execution) {
+      if (isDeployed) {
+        const apiGatewayId = await this.getRestApiId(aws.naming.getApiGatewayName());
+
+        const executionLogGroupExists = await this.isExecutionLogGroupCreated(
+          apiGatewayId,
+          aws.options.stage
+        );
+
+        if (!executionLogGroupExists) {
           const executionLogGroup = {
             Type: 'AWS::Logs::LogGroup',
-            // If the group is created by AWS, it persists after the associated API Gateway is deleted, so we are
-            // setting the DeletionPolicy to Retain to emulate this.
             DeletionPolicy: 'Retain',
             Properties: {
               LogGroupName: {
@@ -176,74 +179,62 @@ module.exports = class LogSubscriptionsPlugin {
               },
             },
           };
-
           template.Resources['ApiGatewayExecutionLogGroup'] = executionLogGroup;
-        } else if (isDeployed) {
-          // If Stack is deployed, get the ID of the API Gateway
-          const apiGatewayId = await this.getRestApiId(aws.naming.getApiGatewayName());
-
-          // Check to see if CloudWatch Log Group exists for the Execution Logs
-          const executionLogGroupExists = await this.isExecutionLogGroupCreated(
-            apiGatewayId,
-            aws.options.stage
-          );
-
-          if (!executionLogGroupExists) {
-            const executionLogGroup = {
-              Type: 'AWS::Logs::LogGroup',
-              // If the group is created by AWS, it persists after the associated API Gateway is deleted, so we are
-              // setting the DeletionPolicy to Retain to emulate this.
-              DeletionPolicy: 'Retain',
-              Properties: {
-                LogGroupName: {
-                  'Fn::Sub': `API-Gateway-Execution-Logs_$\{${aws.naming.getRestApiLogicalId()}}/${
-                    aws.options.stage
-                  }`,
-                },
-              },
-            };
-            template.Resources['ApiGatewayExecutionLogGroup'] = executionLogGroup;
-          }
         }
-
-        if (config.addLambdaPermission) {
-          const executionLogLambdaPermission = {
-            Type: 'AWS::Lambda::Permission',
-            Properties: {
-              Action: 'lambda:InvokeFunction',
-              FunctionName: destinationArn,
-              Principal: principal,
-              SourceArn: {
-                'Fn::Sub': `arn:aws:logs:\${AWS::Region}:\${AWS::AccountId}:log-group:API-Gateway-Execution-Logs_$\{${aws.naming.getRestApiLogicalId()}}/${
-                  aws.options.stage
-                }:*`,
-              },
-            },
-          };
-
-          template.Resources['ApiGatewayExecutionLogGroupLambdaPermission'] =
-            executionLogLambdaPermission;
-        }
-
-        const executionLogsubscriptionFilter = {
-          Type: 'AWS::Logs::SubscriptionFilter',
+      } else {
+        // If this is a new deployment, we pre-emptively create the execution logs group, this is normally
+        // created by AWS when Cloudwatch logs are enabled for the API Gateway.
+        const executionLogGroup = {
+          Type: 'AWS::Logs::LogGroup',
+          DeletionPolicy: 'Retain',
           Properties: {
-            DestinationArn: destinationArn,
-            FilterPattern: filterPattern,
             LogGroupName: {
               'Fn::Sub': `API-Gateway-Execution-Logs_$\{${aws.naming.getRestApiLogicalId()}}/${
                 aws.options.stage
               }`,
             },
           },
-          DependsOn: [
-            ...(config.addLambdaPermission && ['ApiGatewayExecutionLogGroupLambdaPermission']),
-            aws.naming.generateApiGatewayDeploymentLogicalId(this.serverless.instanceId),
-          ],
         };
-        template.Resources['ApiGatewayExecutionLogGroupSubscriptionFilter'] =
-          executionLogsubscriptionFilter;
+        template.Resources['ApiGatewayExecutionLogGroup'] = executionLogGroup;
       }
+
+      if (config.addLambdaPermission) {
+        const executionLogLambdaPermission = {
+          Type: 'AWS::Lambda::Permission',
+          Properties: {
+            Action: 'lambda:InvokeFunction',
+            FunctionName: destinationArn,
+            Principal: principal,
+            SourceArn: {
+              'Fn::Sub': `arn:aws:logs:\${AWS::Region}:\${AWS::AccountId}:log-group:API-Gateway-Execution-Logs_$\{${aws.naming.getRestApiLogicalId()}}/${
+                aws.options.stage
+              }:*`,
+            },
+          },
+        };
+
+        template.Resources['ApiGatewayExecutionLogGroupLambdaPermission'] =
+          executionLogLambdaPermission;
+      }
+
+      const executionLogsubscriptionFilter = {
+        Type: 'AWS::Logs::SubscriptionFilter',
+        Properties: {
+          DestinationArn: destinationArn,
+          FilterPattern: filterPattern,
+          LogGroupName: {
+            'Fn::Sub': `API-Gateway-Execution-Logs_$\{${aws.naming.getRestApiLogicalId()}}/${
+              aws.options.stage
+            }`,
+          },
+        },
+        DependsOn: [
+          ...(config.addLambdaPermission && ['ApiGatewayExecutionLogGroupLambdaPermission']),
+          aws.naming.generateApiGatewayDeploymentLogicalId(this.serverless.instanceId),
+        ],
+      };
+      template.Resources['ApiGatewayExecutionLogGroupSubscriptionFilter'] =
+        executionLogsubscriptionFilter;
     }
   }
 
@@ -272,7 +263,10 @@ module.exports = class LogSubscriptionsPlugin {
       enabled: false,
       filterPattern: '',
       addLambdaPermission: true,
-      apiGatewayLogs: false,
+      apiGatewayLogs: {
+        access: false,
+        execution: false,
+      },
     };
 
     const config = Object.assign(defaults, common);
@@ -357,13 +351,11 @@ module.exports = class LogSubscriptionsPlugin {
   // isExecutionLogGroupCreated checks for the existence of the Execution CloudWatch Log Group
   // and returns true/false
   async isExecutionLogGroupCreated(restApiId, stage) {
-    console.log(restApiId, stage);
     let res;
     try {
       res = await this.provider.request('CloudWatchLogs', 'describeLogGroups', {
         logGroupNamePrefix: `API-Gateway-Execution-Logs_${restApiId}/${stage}`,
       });
-      console.log(res.logGroups.length > 0);
     } catch (err) {
       console.log(err);
       throw err;
