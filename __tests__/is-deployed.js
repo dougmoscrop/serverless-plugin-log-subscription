@@ -1,26 +1,38 @@
 'use strict';
 
 const test = require('ava');
-const { mockClient } = require('aws-sdk-client-mock');
-const { CloudFormationClient, DescribeStacksCommand } = require('@aws-sdk/client-cloudformation');
+const sinon = require('sinon');
+const configureAwsRequestStub = require('@serverless/test/configure-aws-request-stub');
 
 const Plugin = require('..');
 
 test('returns true if stack already exists', async t => {
+  const provider = {
+    request: () => true,
+  };
+
   const serverless = {
-    service: {},
+    service: {
+      provider: {
+        name: 'aws',
+      },
+    },
+    getProvider: sinon.stub().returns(provider),
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },
   };
 
-  const cfnMock = mockClient(CloudFormationClient);
-  cfnMock.on(DescribeStacksCommand).resolves({
-    Stacks: [
-      {
-        StackName: 'testing-cfn-stack',
+  configureAwsRequestStub(serverless.getProvider('aws'), {
+    CloudFormation: {
+      describeStacks: {
+        Stacks: [
+          {
+            StackId: 'blah',
+          },
+        ],
       },
-    ],
+    },
   });
 
   const plugin = new Plugin(serverless);
@@ -31,15 +43,29 @@ test('returns true if stack already exists', async t => {
 });
 
 test('returns false if no existing stack is found', async t => {
+  const provider = {
+    request: () => true,
+  };
+
   const serverless = {
-    service: {},
+    service: {
+      provider: {
+        name: 'aws',
+      },
+    },
+    getProvider: sinon.stub().returns(provider),
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },
   };
 
-  const cfnMock = mockClient(CloudFormationClient);
-  cfnMock.on(DescribeStacksCommand).rejects('stack with id testing-cfn-stack does not exist');
+  configureAwsRequestStub(serverless.getProvider('aws'), {
+    CloudFormation: {
+      describeStacks: {
+        Stacks: [],
+      },
+    },
+  });
 
   const plugin = new Plugin(serverless);
 
@@ -49,18 +75,28 @@ test('returns false if no existing stack is found', async t => {
 });
 
 test('throws error for any other aws-sdk exception', async t => {
+  const provider = {
+    request: () => true,
+  };
+
   const serverless = {
     service: {},
+    getProvider: sinon.stub().returns(provider),
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },
   };
 
-  const cfnMock = mockClient(CloudFormationClient);
-  cfnMock.on(DescribeStacksCommand).rejects('some other error');
+  configureAwsRequestStub(serverless.getProvider('aws'), {
+    CloudFormation: {
+      describeStacks: () => {
+        throw new Error('some other error');
+      },
+    },
+  });
 
   const plugin = new Plugin(serverless);
 
-  const error = await t.throwsAsync(plugin.isDeployed());
+  const error = await t.throwsAsync(plugin.isDeployed('testing-cfn-stack'));
   t.is(error.message, 'some other error');
 });

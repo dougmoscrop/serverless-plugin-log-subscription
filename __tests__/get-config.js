@@ -1,12 +1,14 @@
 'use strict';
 
 const test = require('ava');
+const sinon = require('sinon');
 
 const Plugin = require('..');
 
 test('defaults to disabled', t => {
   const serverless = {
     service: {},
+    getProvider: sinon.stub().withArgs('aws').returns({}),
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },
@@ -22,6 +24,7 @@ test('defaults to disabled', t => {
 test('enabled by function (true)', t => {
   const serverless = {
     service: {},
+    getProvider: sinon.stub().withArgs('aws').returns({}),
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },
@@ -35,13 +38,14 @@ test('enabled by function (true)', t => {
     enabled: true,
     filterPattern: '',
     addLambdaPermission: true,
-    apiGatewayLogs: true,
+    apiGatewayLogs: false,
   });
 });
 
 test('enabled by function (object)', t => {
   const serverless = {
     service: {},
+    getProvider: sinon.stub().withArgs('aws').returns({}),
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },
@@ -57,6 +61,7 @@ test('enabled by function (object)', t => {
 test('disabled by function (false)', t => {
   const serverless = {
     service: {},
+    getProvider: sinon.stub().withArgs('aws').returns({}),
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },
@@ -72,6 +77,7 @@ test('disabled by function (false)', t => {
 test('disabled by function (object)', t => {
   const serverless = {
     service: {},
+    getProvider: sinon.stub().withArgs('aws').returns({}),
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },
@@ -87,6 +93,7 @@ test('disabled by function (object)', t => {
 test('enabled (globally)', t => {
   const serverless = {
     service: {},
+    getProvider: sinon.stub().withArgs('aws').returns({}),
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },
@@ -102,6 +109,7 @@ test('enabled (globally)', t => {
 test('disabled (function overrides globally)', t => {
   const serverless = {
     service: {},
+    getProvider: sinon.stub().withArgs('aws').returns({}),
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },
@@ -117,6 +125,7 @@ test('disabled (function overrides globally)', t => {
 test('global config', t => {
   const serverless = {
     service: {},
+    getProvider: sinon.stub().withArgs('aws').returns({}),
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },
@@ -136,6 +145,7 @@ test('global config', t => {
 test('function override', t => {
   const serverless = {
     service: {},
+    getProvider: sinon.stub().withArgs('aws').returns({}),
     configSchemaHandler: {
       defineFunctionProperties: Function.prototype,
     },

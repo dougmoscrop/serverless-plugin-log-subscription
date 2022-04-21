@@ -1,10 +1,8 @@
 'use strict';
 
-const { CloudFormationClient, DescribeStacksCommand } = require('@aws-sdk/client-cloudformation');
-
 module.exports = class LogSubscriptionsPlugin {
   constructor(serverless) {
-    this.provider = 'aws';
+    this.provider = serverless.getProvider('aws');
     this.serverless = serverless;
     this.hooks = {
       'aws:package:finalize:mergeCustomProviderResources': () => this.addLogSubscriptions(),
@@ -34,8 +32,7 @@ module.exports = class LogSubscriptionsPlugin {
       }
     }
 
-    const apiGateway =
-      service.functions && this.serverless.getProvider('aws').naming.getApiGatewayLogGroupLogicalId;
+    const apiGateway = service.functions && this.provider.naming.getApiGatewayLogGroupLogicalId;
 
     if (apiGateway) {
       const custom = service.custom || {};
@@ -45,7 +42,7 @@ module.exports = class LogSubscriptionsPlugin {
   }
 
   addLambdaLogSubscription(service, functions, logSubscription, suffix = '') {
-    const aws = this.serverless.getProvider('aws');
+    const aws = this.provider;
     const template = service.provider.compiledCloudFormationTemplate;
 
     template.Resources = template.Resources || {};
@@ -112,11 +109,11 @@ module.exports = class LogSubscriptionsPlugin {
   }
 
   async addApiGatewayLogSubscription(service, logSubscription) {
-    const aws = this.serverless.getProvider('aws');
+    const aws = this.provider;
     const region = service.provider.region;
     const template = service.provider.compiledCloudFormationTemplate;
     const config = this.getConfig(logSubscription);
-    const stackName = this.serverless.getProvider('aws').naming.getStackName();
+    const stackName = this.provider.naming.getStackName();
 
     template.Resources = template.Resources || {};
 
@@ -241,7 +238,7 @@ module.exports = class LogSubscriptionsPlugin {
       enabled: false,
       filterPattern: '',
       addLambdaPermission: true,
-      apiGatewayLogs: true,
+      apiGatewayLogs: false,
     };
 
     const config = Object.assign(defaults, common);
@@ -284,18 +281,18 @@ module.exports = class LogSubscriptionsPlugin {
   // isDeployed calls AWS to see if a CloudFormation stack with the same name already exists, if so
   // then we can safely assume that this is a pre-existing deployment.
   async isDeployed(stackName) {
-    const cfnClient = new CloudFormationClient();
-    const cmd = new DescribeStacksCommand({ StackName: stackName });
-
     let res;
     try {
-      res = await cfnClient.send(cmd);
+      res = await this.provider.request('CloudFormation', 'describeStacks', {
+        StackName: stackName,
+      });
     } catch (err) {
       if (err.message.includes('does not exist')) {
         return false; // If stack doesn't exist it will throw an error, catching it here returning false
       }
       throw err;
     }
-    return res?.Stacks.length > 0;
+
+    return res.Stacks.length > 0;
   }
 };
