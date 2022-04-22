@@ -16,15 +16,13 @@ The addSourceLambdaPermission option has been removed and will throw an error.
 
 Configuration happens both 'globally' (via custom.logSubscription) and also at the function level (via function.yourFunction.logSubscription)
 
-`enabled` - whether or not log subscriptions are enabled. defaults to false globally, if set to true it will be on for all functions (unless they set to false)
-
-`destinationArn` (required) - the arn of the CloudWatch Destination (you create this resource yourself) or an Fn::GetAtt reference to a local Lambda function for direct subscription
-
-`roleArn` (optional) - the arn of the IAM role granting logs permission to put to Destination (you create this resource yourself)
-
-`filterPattern` (optional) if specified, it will only forward logs matching this pattern. You can do simple token matching, or JSON matching (e.g. `{ $.level >= 30 }` to match a bunyan level)
-
-`apiGatewayLogs` (optional) if `true` the plugin will configure a subscription filter for the API Gateway access and execution log groups. This feature only works if logging is enabled for the API gateway as well.
+| Name             | Description                                                                                                                                                         | Type    | Default                                                               | Required |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | --------------------------------------------------------------------- | :------: |
+| `enabled`        | whether or not log subscriptions are enabled. defaults to false globally, if set to true it will be on for all functions (unless they set to false)                 | Boolean | `false`                                                               |   true   |
+| `destinationArn` | the arn of the CloudWatch Destination (you create this resource yourself) or an Fn::GetAtt reference to a local Lambda function for direct subscription             | String  | `""`                                                                  |   true   |
+| `roleArn`        | the arn of the IAM role granting logs permission to put to Destination (you create this resource yourself)                                                          | String  | `""`                                                                  |  false   |
+| `filterPattern`  | if specified, it will only forward logs matching this pattern. You can do simple token matching, or JSON matching (e.g. `{ $.level >= 30 }` to match a bunyan level | String  | `""`                                                                  |  false   |
+| `apiGatewayLogs` | Configures a subscription filter for the API Gateway access and execution log groups.                                                                               | Object  | <pre>apiGatewayLogs:<br> access: false<br> execution: false<br></pre> |  false   |
 
 ### Examples
 
@@ -64,8 +62,7 @@ custom:
     roleArn: 'some-arn'
 
 functions:
-  myFunction:
-    ...
+  myFunction: ...
 ```
 
 Disabled for one function:
@@ -77,8 +74,7 @@ custom:
     destinationArn: 'some-arn'
 
 functions:
-  myFunction:
-    ...
+  myFunction: ...
   myOtherFunction:
     logSubscription: false
 ```
@@ -95,17 +91,16 @@ custom:
     addLambdaPermission: true # this is the default, set to false to manage your own permissions
 
 functions:
-  api:
-    ...
+  api: ...
   logsProcessor:
     logSubscription: false # Don't subscribe the log processors logs to the log processor..
 ```
 
 Several subscription filters for one log group / the same log group:
 
-Note: Please make sure your AWS account is allowed to use this feature!   
-By default, AWS allows to use 1 subscription filter per log group and this quota can't be changed.   
-But, there is an opportunity to ask AWS Support to help you with using several subscription filters for 
+Note: Please make sure your AWS account is allowed to use this feature!  
+By default, AWS allows to use 1 subscription filter per log group and this quota can't be changed.  
+But, there is an opportunity to ask AWS Support to help you with using several subscription filters for
 one log group.
 
 ```yml
@@ -119,6 +114,5 @@ custom:
       roleArn: 'some-arn'
 
 functions:
-  myFunction:
-    ...
+  myFunction: ...
 ```
