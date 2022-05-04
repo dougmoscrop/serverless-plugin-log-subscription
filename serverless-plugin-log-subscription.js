@@ -8,7 +8,7 @@ module.exports = class LogSubscriptionsPlugin {
       'aws:package:finalize:mergeCustomProviderResources': () => this.addLogSubscriptions(),
     };
 
-    serverless.configSchemaHandler.defineFunctionProperties(this.provider, {
+    serverless.configSchemaHandler.defineFunctionProperties('aws', {
       properties: {
         logSubscription: { type: 'boolean' },
       },
