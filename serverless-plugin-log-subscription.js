@@ -187,7 +187,7 @@ module.exports = class LogSubscriptionsPlugin {
             Ref: aws.naming.getApiGatewayLogGroupLogicalId(),
           },
         },
-        DependsOn: ['ApiGatewayLogGroupLambdaPermission'],
+        DependsOn: config.addLambdaPermission ? ['ApiGatewayLogGroupLambdaPermission'] : [],
       };
       template.Resources['ApiGatewayAccessLogGroupSubscriptionFilter'] =
         accessLogsubscriptionFilter;
