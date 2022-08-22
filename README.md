@@ -91,7 +91,7 @@ custom:
     enabled: true
     destinationArn:
       # Note that you have to use Serverless' naming convention here
-      Fn::GetAtt: ['LogsProcessorLambdaFunction', 'arn']
+      Fn::GetAtt: ['LogsProcessorLambdaFunction', 'Arn']
     addLambdaPermission: true # this is the default, set to false to manage your own permissions
 
 functions:
