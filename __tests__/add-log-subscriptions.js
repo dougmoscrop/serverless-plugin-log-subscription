@@ -23,10 +23,12 @@ test('does nothing when there are no functions', t => {
 
 test('adds subscriptions for enabled functions', t => {
   const getNormalizedFunctionName = sinon.stub().onCall(0).returns('A').onCall(1).returns('B');
+  const getStackName = sinon.stub().returns('testing-cfn-stack');
 
   const provider = {
     naming: {
       getNormalizedFunctionName,
+      getStackName,
     },
   };
   const serverless = {
@@ -75,10 +77,12 @@ test('adds subscriptions for enabled functions', t => {
 
 test('configures the subscription filter correctly', t => {
   const getNormalizedFunctionName = sinon.stub().returns('A');
+  const getStackName = sinon.stub().returns('testing-cfn-stack');
 
   const provider = {
     naming: {
       getNormalizedFunctionName,
+      getStackName,
     },
   };
   const serverless = {
@@ -121,10 +125,12 @@ test('configures the subscription filter correctly', t => {
 
 test('configures the subscription filter with RoleArn correctly', t => {
   const getNormalizedFunctionName = sinon.stub().returns('A');
+  const getStackName = sinon.stub().returns('testing-cfn-stack');
 
   const provider = {
     naming: {
       getNormalizedFunctionName,
+      getStackName,
     },
   };
   const serverless = {
@@ -169,10 +175,12 @@ test('configures the subscription filter with RoleArn correctly', t => {
 
 test('configures the subscription filter with DependsOn the log group', t => {
   const getNormalizedFunctionName = sinon.stub().returns('A');
+  const getStackName = sinon.stub().returns('testing-cfn-stack');
 
   const provider = {
     naming: {
       getNormalizedFunctionName,
+      getStackName,
     },
   };
   const serverless = {
@@ -212,10 +220,12 @@ test('configures the subscription filter with DependsOn the log group', t => {
 
 test('configures the subscription filter with DependsOn the lambda function', t => {
   const getNormalizedFunctionName = sinon.stub().returns('A');
+  const getStackName = sinon.stub().returns('testing-cfn-stack');
 
   const provider = {
     naming: {
       getNormalizedFunctionName,
+      getStackName,
     },
   };
   const serverless = {
@@ -309,7 +319,7 @@ test('configures api gateway log subscriptions without creating Execution Log gr
 
   sinon.stub(plugin, 'getConfig').returns({
     enabled: true,
-    destinationArn: 'blah-blah-blah',
+    destinationArn: 'arn:aws:lambda:blah-blah-blah',
     filterPattern: '{ $.level = 42 }',
     apiGatewayLogs: true,
     addLambdaPermission: true,
@@ -324,20 +334,31 @@ test('configures api gateway log subscriptions without creating Execution Log gr
   const resources = serverless.service.provider.compiledCloudFormationTemplate.Resources;
 
   t.deepEqual(resources, {
+    ALogLambdaPermission: {
+      Type: 'AWS::Lambda::Permission',
+      Properties: {
+        Action: 'lambda:InvokeFunction',
+        FunctionName: 'arn:aws:lambda:blah-blah-blah',
+        Principal: 'logs.undefined.amazonaws.com',
+        SourceArn: {
+          'Fn::GetAtt': ['ALogGroup', 'Arn'],
+        },
+      },
+    },
     ASubscriptionFilter: {
       Type: 'AWS::Logs::SubscriptionFilter',
       Properties: {
-        DestinationArn: 'blah-blah-blah',
+        DestinationArn: 'arn:aws:lambda:blah-blah-blah',
         FilterPattern: '{ $.level = 42 }',
         LogGroupName: '/aws/lambda/a',
       },
-      DependsOn: ['ALogGroup'],
+      DependsOn: ['ALogLambdaPermission', 'ALogGroup'],
     },
     ApiGatewayLogGroupLambdaPermission: {
       Type: 'AWS::Lambda::Permission',
       Properties: {
         Action: 'lambda:InvokeFunction',
-        FunctionName: 'blah-blah-blah',
+        FunctionName: 'arn:aws:lambda:blah-blah-blah',
         Principal: 'logs.undefined.amazonaws.com',
         SourceArn: {
           'Fn::GetAtt': [getApiGatewayLogGroupLogicalId(), 'Arn'],
@@ -348,7 +369,7 @@ test('configures api gateway log subscriptions without creating Execution Log gr
       Type: 'AWS::Lambda::Permission',
       Properties: {
         Action: 'lambda:InvokeFunction',
-        FunctionName: 'blah-blah-blah',
+        FunctionName: 'arn:aws:lambda:blah-blah-blah',
         Principal: 'logs.undefined.amazonaws.com',
         SourceArn: {
           'Fn::Sub': `arn:aws:logs:\${AWS::Region}:\${AWS::AccountId}:log-group:API-Gateway-Execution-Logs_$\{${getRestApiLogicalId()}}/${
@@ -360,7 +381,7 @@ test('configures api gateway log subscriptions without creating Execution Log gr
     ApiGatewayAccessLogGroupSubscriptionFilter: {
       Type: 'AWS::Logs::SubscriptionFilter',
       Properties: {
-        DestinationArn: 'blah-blah-blah',
+        DestinationArn: 'arn:aws:lambda:blah-blah-blah',
         FilterPattern: '{ $.level = 42 }',
         LogGroupName: {
           Ref: getApiGatewayLogGroupLogicalId(),
@@ -371,7 +392,7 @@ test('configures api gateway log subscriptions without creating Execution Log gr
     ApiGatewayExecutionLogGroupSubscriptionFilter: {
       Type: 'AWS::Logs::SubscriptionFilter',
       Properties: {
-        DestinationArn: 'blah-blah-blah',
+        DestinationArn: 'arn:aws:lambda:blah-blah-blah',
         FilterPattern: '{ $.level = 42 }',
         LogGroupName: {
           'Fn::Sub': `API-Gateway-Execution-Logs_$\{${getRestApiLogicalId()}}/${
@@ -476,4 +497,285 @@ test("doesn't configure api gateway log subscriptions when provider.logs.restApi
       DependsOn: ['BLogGroup'],
     },
   });
+});
+
+test('configures subscriptions for an array-like config', async t => {
+  const getNormalizedFunctionName = sinon.stub().returns('A');
+  const getRestApiLogicalId = sinon.stub().returns('abcd1234');
+  const getApiGatewayLogGroupLogicalId = sinon.stub().returns('ApiGatewayLogGroup');
+  const generateApiGatewayDeploymentLogicalId = sinon.stub().returns('ApiGatewayDeployment1234');
+  const getStackName = sinon.stub().returns('testing-cfn-stack');
+
+  const provider = {
+    naming: {
+      getNormalizedFunctionName,
+      getRestApiLogicalId,
+      getApiGatewayLogGroupLogicalId,
+      generateApiGatewayDeploymentLogicalId,
+      getStackName,
+    },
+  };
+  const config = {
+    enabled: true,
+    destinationArn: 'arn:aws:lambda:blah-blah-blah',
+    filterPattern: '{ $.level = 42 }',
+    apiGatewayLogs: true,
+    addLambdaPermission: true,
+  };
+  const serverless = {
+    instanceId: '1234',
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
+    getProvider: sinon.stub().withArgs('aws').returns(provider),
+    service: {
+      provider: {
+        stage: 'test',
+        compiledCloudFormationTemplate: {
+          Resources: {
+            ApiGatewayRestApi: {
+              name: 'abcd',
+            },
+          },
+        },
+        logs: {
+          restApi: true,
+        },
+      },
+      custom: {
+        logSubscription: [
+          config
+        ]
+      },
+      functions: {
+        A: {
+          name: 'a',
+        },
+      },
+    },
+  };
+
+  const plugin = new Plugin(serverless);
+
+  sinon.stub(plugin, 'getConfig').returns(config);
+
+  // Return true to emulate the CFN stack already existing
+  sinon.stub(plugin, 'isDeployed').returns(true);
+  sinon.stub(plugin, 'getLogGroupName').returns('/aws/lambda/a');
+
+  await plugin.addLogSubscriptions();
+
+  const resources = serverless.service.provider.compiledCloudFormationTemplate.Resources;
+
+  t.deepEqual(resources, {
+    ALogLambdaPermission: {
+      Type: 'AWS::Lambda::Permission',
+      Properties: {
+        Action: 'lambda:InvokeFunction',
+        FunctionName: 'arn:aws:lambda:blah-blah-blah',
+        Principal: 'logs.undefined.amazonaws.com',
+        SourceArn: {
+          'Fn::GetAtt': ['ALogGroup', 'Arn'],
+        },
+      },
+    },
+    ASubscriptionFilter0: {
+      Type: 'AWS::Logs::SubscriptionFilter',
+      Properties: {
+        DestinationArn: 'arn:aws:lambda:blah-blah-blah',
+        FilterPattern: '{ $.level = 42 }',
+        LogGroupName: '/aws/lambda/a',
+      },
+      DependsOn: ['ALogLambdaPermission', 'ALogGroup'],
+    },
+    ApiGatewayLogGroupLambdaPermission0: {
+      Type: 'AWS::Lambda::Permission',
+      Properties: {
+        Action: 'lambda:InvokeFunction',
+        FunctionName: 'arn:aws:lambda:blah-blah-blah',
+        Principal: 'logs.undefined.amazonaws.com',
+        SourceArn: {
+          'Fn::GetAtt': [getApiGatewayLogGroupLogicalId(), 'Arn'],
+        },
+      },
+    },
+    ApiGatewayExecutionLogGroupLambdaPermission0: {
+      Type: 'AWS::Lambda::Permission',
+      Properties: {
+        Action: 'lambda:InvokeFunction',
+        FunctionName: 'arn:aws:lambda:blah-blah-blah',
+        Principal: 'logs.undefined.amazonaws.com',
+        SourceArn: {
+          'Fn::Sub': `arn:aws:logs:\${AWS::Region}:\${AWS::AccountId}:log-group:API-Gateway-Execution-Logs_$\{${getRestApiLogicalId()}}/${
+            serverless.service.provider.stage
+          }:*`,
+        },
+      },
+    },
+    ApiGatewayAccessLogGroupSubscriptionFilter0: {
+      Type: 'AWS::Logs::SubscriptionFilter',
+      Properties: {
+        DestinationArn: 'arn:aws:lambda:blah-blah-blah',
+        FilterPattern: '{ $.level = 42 }',
+        LogGroupName: {
+          Ref: getApiGatewayLogGroupLogicalId(),
+        },
+      },
+      DependsOn: ['ApiGatewayLogGroupLambdaPermission0'],
+    },
+    ApiGatewayExecutionLogGroupSubscriptionFilter0: {
+      Type: 'AWS::Logs::SubscriptionFilter',
+      Properties: {
+        DestinationArn: 'arn:aws:lambda:blah-blah-blah',
+        FilterPattern: '{ $.level = 42 }',
+        LogGroupName: {
+          'Fn::Sub': `API-Gateway-Execution-Logs_$\{${getRestApiLogicalId()}}/${
+            serverless.service.provider.stage
+          }`,
+        },
+      },
+      DependsOn: ['ApiGatewayDeployment1234'],
+    },
+    ApiGatewayRestApi: { name: 'abcd' },
+  });
+});
+
+test('configures api gateway log subscriptions for execution logs only when accessLogging is false', async t => {
+  const getNormalizedFunctionName = sinon.stub().returns('A');
+  const getRestApiLogicalId = sinon.stub().returns('abcd1234');
+  const getApiGatewayLogGroupLogicalId = sinon.stub().returns('ApiGatewayLogGroup');
+  const generateApiGatewayDeploymentLogicalId = sinon.stub().returns('ApiGatewayDeployment1234');
+  const getStackName = sinon.stub().returns('testing-cfn-stack');
+
+  const provider = {
+    naming: {
+      getNormalizedFunctionName,
+      getRestApiLogicalId,
+      getApiGatewayLogGroupLogicalId,
+      generateApiGatewayDeploymentLogicalId,
+      getStackName,
+    },
+  };
+  const serverless = {
+    instanceId: '1234',
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
+    getProvider: sinon.stub().withArgs('aws').returns(provider),
+    service: {
+      provider: {
+        stage: 'test',
+        compiledCloudFormationTemplate: {
+          Resources: {
+            ApiGatewayRestApi: {
+              name: 'abcd',
+            },
+          },
+        },
+        logs: {
+          restApi: {
+            accessLogging: false
+          },
+        },
+      },
+      functions: {
+        A: {
+          name: 'a',
+        },
+      },
+    },
+  };
+
+  const plugin = new Plugin(serverless);
+
+  sinon.stub(plugin, 'getConfig').returns({
+    enabled: true,
+    destinationArn: 'arn:aws:lambda:blah-blah-blah',
+    filterPattern: '{ $.level = 42 }',
+    apiGatewayLogs: true,
+    addLambdaPermission: true,
+  });
+
+  // Return true to emulate the CFN stack already existing
+  sinon.stub(plugin, 'isDeployed').returns(true);
+  sinon.stub(plugin, 'getLogGroupName').returns('/aws/lambda/a');
+
+  await plugin.addLogSubscriptions();
+
+  const resources = serverless.service.provider.compiledCloudFormationTemplate.Resources;
+
+  t.is(resources.ApiGatewayLogGroupLambdaPermission, undefined);
+  t.is(resources.ApiGatewayAccessLogGroupSubscriptionFilter, undefined);
+  t.not(resources.ApiGatewayExecutionLogGroupLambdaPermission, undefined);
+  t.not(resources.ApiGatewayExecutionLogGroupSubscriptionFilter, undefined);
+});
+
+test('configures api gateway log subscriptions for access logs only when executionLogging is false', async t => {
+  const getNormalizedFunctionName = sinon.stub().returns('A');
+  const getRestApiLogicalId = sinon.stub().returns('abcd1234');
+  const getApiGatewayLogGroupLogicalId = sinon.stub().returns('ApiGatewayLogGroup');
+  const generateApiGatewayDeploymentLogicalId = sinon.stub().returns('ApiGatewayDeployment1234');
+  const getStackName = sinon.stub().returns('testing-cfn-stack');
+
+  const provider = {
+    naming: {
+      getNormalizedFunctionName,
+      getRestApiLogicalId,
+      getApiGatewayLogGroupLogicalId,
+      generateApiGatewayDeploymentLogicalId,
+      getStackName,
+    },
+  };
+  const serverless = {
+    instanceId: '1234',
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
+    getProvider: sinon.stub().withArgs('aws').returns(provider),
+    service: {
+      provider: {
+        stage: 'test',
+        compiledCloudFormationTemplate: {
+          Resources: {
+            ApiGatewayRestApi: {
+              name: 'abcd',
+            },
+          },
+        },
+        logs: {
+          restApi: {
+            executionLogging: false
+          },
+        },
+      },
+      functions: {
+        A: {
+          name: 'a',
+        },
+      },
+    },
+  };
+
+  const plugin = new Plugin(serverless);
+
+  sinon.stub(plugin, 'getConfig').returns({
+    enabled: true,
+    destinationArn: 'arn:aws:lambda:blah-blah-blah',
+    filterPattern: '{ $.level = 42 }',
+    apiGatewayLogs: true,
+    addLambdaPermission: true,
+  });
+
+  // Return true to emulate the CFN stack already existing
+  sinon.stub(plugin, 'isDeployed').returns(true);
+  sinon.stub(plugin, 'getLogGroupName').returns('/aws/lambda/a');
+
+  await plugin.addLogSubscriptions();
+
+  const resources = serverless.service.provider.compiledCloudFormationTemplate.Resources;
+
+  t.not(resources.ApiGatewayLogGroupLambdaPermission, undefined);
+  t.not(resources.ApiGatewayAccessLogGroupSubscriptionFilter, undefined);
+  t.is(resources.ApiGatewayExecutionLogGroupLambdaPermission, undefined);
+  t.is(resources.ApiGatewayExecutionLogGroupSubscriptionFilter, undefined);
 });
