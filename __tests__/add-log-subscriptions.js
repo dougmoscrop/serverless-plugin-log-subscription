@@ -52,6 +52,7 @@ test('adds subscriptions for enabled functions', t => {
 
   sinon
     .stub(plugin, 'getConfig')
+    .returns({ enabled: false })
     .onCall(0)
     .returns({ enabled: true })
     .onCall(1)
@@ -497,6 +498,50 @@ test("doesn't configure api gateway log subscriptions when provider.logs.restApi
       DependsOn: ['BLogGroup'],
     },
   });
+});
+
+test("doesn't configure api gateway log subscriptions when enabled is false", async t => {
+  const getStackName = sinon.stub().returns('testing-cfn-stack');
+
+  const provider = {
+    naming: {
+      getStackName,
+    },
+  };
+  const serverless = {
+    instanceId: '1234',
+    configSchemaHandler: {
+      defineFunctionProperties: Function.prototype,
+    },
+    getProvider: sinon.stub().withArgs('aws').returns(provider),
+    service: {
+      provider: {
+        stage: 'test',
+        compiledCloudFormationTemplate: {
+          Resources: {},
+        },
+        logs: {
+          restApi: false, // don't enable API gateway logs
+        },
+      },
+      functions: {},
+    },
+  };
+
+  const plugin = new Plugin(serverless);
+
+  sinon.stub(plugin, 'getConfig').returns({
+    enabled: false,
+    destinationArn: 'blah-blah-blah',
+    filterPattern: '{ $.level = 42 }',
+    apiGatewayLogs: true,
+  });
+
+  await plugin.addLogSubscriptions();
+
+  const resources = serverless.service.provider.compiledCloudFormationTemplate.Resources;
+
+  t.deepEqual(resources, {});
 });
 
 test('configures subscriptions for an array-like config', async t => {
