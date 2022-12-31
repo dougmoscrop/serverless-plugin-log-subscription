@@ -24,6 +24,8 @@ Configuration happens both 'globally' (via custom.logSubscription) and also at t
 
 `filterPattern` (optional) if specified, it will only forward logs matching this pattern. You can do simple token matching, or JSON matching (e.g. `{ $.level >= 30 }` to match a bunyan level)
 
+`filterName` (optional) if specified, this name will be used for the FilterName property of the AWS Subscription Filter.
+
 `apiGatewayLogs` (optional) if `true` the plugin will configure a subscription filter for the API Gateway access and execution log groups. This feature only works if logging is enabled for the API gateway as well.
 
 ### Examples
@@ -47,6 +49,7 @@ Custom function settings:
 custom:
   logSubscription:
     destinationArn: 'some-arn'
+    filterName: 'some-filter-name'
 
 functions:
   myFunction:
