@@ -109,6 +109,7 @@ test('configures the subscription filter correctly', t => {
     enabled: true,
     destinationArn: 'blah-blah-blah',
     filterPattern: '{ $.level = 42 }',
+    filterName: 'a-custom-filter-name'
   });
 
   sinon.stub(plugin, 'getLogGroupName').returns('/aws/lambda/a');
@@ -121,6 +122,7 @@ test('configures the subscription filter correctly', t => {
     DestinationArn: 'blah-blah-blah',
     FilterPattern: '{ $.level = 42 }',
     LogGroupName: '/aws/lambda/a',
+    FilterName: 'a-custom-filter-name',
   });
 });
 
@@ -460,6 +462,7 @@ test("doesn't configure api gateway log subscriptions when provider.logs.restApi
     enabled: true,
     destinationArn: 'blah-blah-blah',
     filterPattern: '{ $.level = 42 }',
+    filterName: 'a-custom-filter-name',
     apiGatewayLogs: true,
     addLambdaPermission: true,
   });
@@ -485,6 +488,7 @@ test("doesn't configure api gateway log subscriptions when provider.logs.restApi
         DestinationArn: 'blah-blah-blah',
         FilterPattern: '{ $.level = 42 }',
         LogGroupName: '/aws/lambda/a',
+        FilterName: 'a-custom-filter-name',
       },
       DependsOn: ['ALogGroup'],
     },
@@ -494,6 +498,7 @@ test("doesn't configure api gateway log subscriptions when provider.logs.restApi
         DestinationArn: 'blah-blah-blah',
         FilterPattern: '{ $.level = 42 }',
         LogGroupName: '/aws/lambda/b',
+        FilterName: 'a-custom-filter-name',
       },
       DependsOn: ['BLogGroup'],
     },

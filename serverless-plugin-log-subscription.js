@@ -50,7 +50,7 @@ module.exports = class LogSubscriptionsPlugin {
           throw new Error('addSourceLambdaPermission is no longer supported, see README');
         }
 
-        const { destinationArn, filterPattern } = config;
+        const { destinationArn, filterPattern,  filterName } = config;
         const dependsOn = this.getDependsOn(destinationArn);
         const dependencies = [].concat(dependsOn || []);
 
@@ -89,6 +89,7 @@ module.exports = class LogSubscriptionsPlugin {
             DestinationArn: destinationArn,
             FilterPattern: filterPattern,
             LogGroupName: logGroupName,
+            ...filterName && {FilterName: filterName},
           },
           DependsOn: dependencies,
         };
@@ -112,7 +113,7 @@ module.exports = class LogSubscriptionsPlugin {
     template.Resources = template.Resources || {};
 
     if (config.enabled && service.provider.logs?.restApi && config.apiGatewayLogs && this.provider.naming.getApiGatewayLogGroupLogicalId) {
-      const { destinationArn, filterPattern } = config;
+      const { destinationArn, filterPattern, filterName } = config;
       const dependsOn = this.getDependsOn(destinationArn);
       const dependencies = [].concat(dependsOn || []);
       const { accessLogging = true, executionLogging = true } = service.provider.logs.restApi;
@@ -184,6 +185,7 @@ module.exports = class LogSubscriptionsPlugin {
           Properties: {
             DestinationArn: destinationArn,
             FilterPattern: filterPattern,
+            ...filterName && {FilterName: filterName},
             LogGroupName: {
               Ref: aws.naming.getApiGatewayLogGroupLogicalId(),
             },
@@ -200,6 +202,7 @@ module.exports = class LogSubscriptionsPlugin {
           Properties: {
             DestinationArn: destinationArn,
             FilterPattern: filterPattern,
+            ...filterName && {FilterName: filterName},
             LogGroupName: {
               'Fn::Sub': `API-Gateway-Execution-Logs_$\{${aws.naming.getRestApiLogicalId()}}/${
                 this.serverless.service.provider.stage
