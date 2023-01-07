@@ -1,6 +1,6 @@
 {
   "name": "serverless-plugin-log-subscription",
-  "version": "2.1.5",
+  "version": "2.2.0",
   "description": "Attach a CloudWatch LogSubscription to your functions' logs",
   "main": "serverless-plugin-log-subscription.js",
   "scripts": {
