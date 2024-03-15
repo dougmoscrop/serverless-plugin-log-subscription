@@ -10,7 +10,19 @@ module.exports = class LogSubscriptionsPlugin {
 
     serverless.configSchemaHandler.defineFunctionProperties('aws', {
       properties: {
-        logSubscription: { type: 'boolean' },
+        logSubscription: { anyOf: [
+          { type: 'boolean' },
+          { type: 'object',
+            properties: {
+              logGroupName: { type: 'string'},
+              enabled: { type: 'boolean'},
+              destinationArn: { type: 'string' },
+              addLambdaPermission: { type: 'boolean' },
+              filterName: { type: 'string' },
+              filterPattern: { type: 'string' }
+            }
+          }
+        ] },
       },
     });
   }
