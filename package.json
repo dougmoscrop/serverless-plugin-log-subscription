@@ -26,7 +26,7 @@
   },
   "homepage": "https://github.com/dougmoscrop/serverless-plugin-log-subscription#readme",
   "devDependencies": {
-    "@serverless/test": "^8.8.0",
+    "@serverless/test": "^11.1.0",
     "ava": "^3.15.0",
     "aws-sdk-client-mock": "^0.5.6",
     "eslint": "^7.5.0",
