@@ -5,8 +5,7 @@
   "main": "serverless-plugin-log-subscription.js",
   "scripts": {
     "test": "nyc ava -v",
-    "posttest": "eslint .",
-    "postpublish": "git push --tags"
+    "posttest": "eslint ."
   },
   "repository": {
     "type": "git",
