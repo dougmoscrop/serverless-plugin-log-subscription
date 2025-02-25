@@ -185,6 +185,7 @@ module.exports = class LogSubscriptionsPlugin {
               },
             },
           };
+          
           template.Resources[`ApiGatewayExecutionLogGroupLambdaPermission${suffix}`] =
             executionLogLambdaPermission;
         }
@@ -204,6 +205,11 @@ module.exports = class LogSubscriptionsPlugin {
           },
           DependsOn: template.Resources[accessLogLambdaPermResourceName] ? [accessLogLambdaPermResourceName] : [],
         };
+
+        if (config.roleArn !== undefined) {
+          accessLogsubscriptionFilter.Properties.RoleArn = config.roleArn;
+        }
+
         template.Resources[`ApiGatewayAccessLogGroupSubscriptionFilter${suffix}`] =
           accessLogsubscriptionFilter;
       }
@@ -226,6 +232,11 @@ module.exports = class LogSubscriptionsPlugin {
             aws.naming.generateApiGatewayDeploymentLogicalId(this.serverless.instanceId),
           ],
         };
+
+        if (config.roleArn !== undefined) {
+          executionLogsubscriptionFilter.Properties.RoleArn = config.roleArn;
+        }
+
         template.Resources[`ApiGatewayExecutionLogGroupSubscriptionFilter${suffix}`] =
           executionLogsubscriptionFilter;
       }
